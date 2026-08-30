@@ -2,6 +2,7 @@ name: media-slider
 requiredPermissions: []
 assets:
   - "styles.css"
+  - "slider_runtime.js"
 functions:
   mediaSliderWidget:
     path: ./media_slider.ts:mediaSliderWidget
