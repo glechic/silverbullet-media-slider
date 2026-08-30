@@ -1,5 +1,9 @@
 name: media-slider
 requiredPermissions: []
+build:
+  - type: sass
+    in: styles.scss
+    out: styles.css
 assets:
   - "styles.css"
   - "slider_runtime.js"

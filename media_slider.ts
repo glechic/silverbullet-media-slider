@@ -464,7 +464,3 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
-
-// The slider runtime JS lives in slider_runtime.js (bundled as an asset) and
-// is read at render time via asset.readAsset, then eval'd inside the iframe.
-

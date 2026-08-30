@@ -1,0 +1,592 @@
+// media-slider plug — stylesheet (compiled to styles.css by plug-compile)
+//
+// Loaded into the widget iframe. Run `npm run build` to compile this to
+// styles.css, which is bundled as a plug asset.
+
+// --- Variables ---
+$btn-bg: rgba(0, 0, 0, 0.5);
+$btn-bg-hover: rgba(0, 0, 0, 0.7);
+$btn-size: 30px;
+$thumb-w: 98px;
+$thumb-h: 70px;
+$active-border: #ff4081;
+$hover-border: #4f8cff;
+$transition-dur: var(--transition-duration, 300ms);
+$transition-ease: ease-in-out;
+
+// --- Hide scrollbars in the widget iframe ---
+html,
+body {
+  overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// --- Empty / error states ---
+.ms-empty,
+.ms-error {
+  padding: 1em;
+  border-radius: 6px;
+  background: rgba(127, 127, 127, 0.1);
+  color: inherit;
+  font-size: 0.9em;
+}
+
+.ms-error {
+  background: rgba(255, 80, 80, 0.12);
+}
+
+// --- Wrapper ---
+.media-slider-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 10px;
+  border: none;
+  box-shadow: none;
+
+  &.flex-row {
+    flex-direction: row;
+  }
+
+  &.flex-column {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  // Fullscreen (host iframe is fullscreened via frameElement)
+  &.ms-fullscreen {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    border-radius: 0;
+    margin: 0;
+
+    .slider-content {
+      width: 100%;
+      height: 100%;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .slider-container {
+      width: 100%;
+      height: 100%;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .media-wrapper {
+      height: 100%;
+      width: 100%;
+    }
+
+    img.slider-media,
+    video.slider-media,
+    iframe.slider-media {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+  }
+
+  // Thumbnail collapse toggle button
+  .ms-thumbnail-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease, background 0.2s ease;
+    z-index: 10;
+    box-shadow: none;
+
+    &:hover {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.6);
+    }
+
+    &.ms-vertical {
+      width: 20px;
+      height: 100%;
+      min-height: $thumb-h;
+      border-radius: 4px 0 0 4px;
+      margin-right: -2px;
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+    }
+  }
+
+  .ms-thumbnail-section.ms-horizontal .ms-thumbnail-toggle-btn {
+    width: 50px;
+    height: 20px;
+    border-radius: 0 0 4px 4px;
+    margin-top: -2px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  // Collapsed state for horizontal thumbnails
+  .thumbnail-container.horizontal.ms-collapsed {
+    max-height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
+  }
+
+  .thumbnail-container.horizontal:not(.ms-collapsed) {
+    max-height: 200px;
+    opacity: 1;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+  }
+
+  // Collapsed state for vertical thumbnails
+  .thumbnail-container.vertical.ms-collapsed {
+    max-width: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    transition: max-width 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
+  }
+
+  .thumbnail-container.vertical:not(.ms-collapsed) {
+    max-width: 120px;
+    opacity: 1;
+    transition: max-width 0.3s ease, opacity 0.2s ease;
+  }
+}
+
+// --- Slider content ---
+.slider-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: var(--slider-width, 100%);
+}
+
+.media-slider-wrapper.flex-row .slider-content {
+  flex: 1;
+  min-width: 0;
+}
+
+// --- Slider container ---
+.slider-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  background: transparent;
+  transition: all $transition-dur $transition-ease;
+  width: var(--slider-width, 100%);
+  height: var(--slider-height, 360px);
+  border-radius: 4px;
+}
+
+.fullscreen-slider {
+  height: 85vh;
+}
+
+// --- Media wrapper ---
+.media-wrapper {
+  margin: auto 0;
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+  scrollbar-width: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &.markdown-content {
+    display: block;
+    padding: 0 8px;
+    text-align: left;
+  }
+}
+
+// --- Media elements ---
+.slider-media {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 4px;
+  display: block;
+}
+
+img.slider-media {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.slider-media iframe {
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: 16 / 9;
+  border: none;
+  background: #000;
+}
+
+audio.slider-media.audio-media {
+  width: 88%;
+  display: block;
+  margin: 0 auto;
+}
+
+// --- Captions ---
+.slider-caption-container {
+  width: 100%;
+  text-align: center;
+  margin-top: 5px;
+}
+
+.slider-caption {
+  color: var(--text-normal, #fff);
+  font-size: 0.9em;
+}
+
+.slider-caption-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  text-align: center;
+  font-size: 0.9em;
+  padding: 5px;
+  border-radius: 5px;
+}
+
+// --- Thumbnails ---
+.ms-thumbnail-section {
+  display: flex;
+  align-items: center;
+
+  &.ms-horizontal {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  &.ms-vertical {
+    flex-direction: row;
+    width: auto;
+    flex-shrink: 0;
+  }
+}
+
+.thumbnail-container {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &.horizontal {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    white-space: nowrap;
+    width: 100%;
+    margin: 10px 0;
+    will-change: transform;
+    contain: layout paint;
+  }
+
+  &.vertical {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    margin: 10px 0;
+    min-width: 95px;
+    max-height: 360px;
+  }
+}
+
+.thumbnail {
+  width: $thumb-w;
+  height: $thumb-h;
+  object-fit: cover;
+  cursor: pointer;
+  border: 3px solid transparent;
+  border-radius: 5px;
+  transition: border-color 0.1s;
+
+  &:hover {
+    border-color: $hover-border;
+    border-radius: 8px;
+  }
+}
+
+.vertical-thumb {
+  height: $thumb-h;
+  width: $thumb-w;
+  min-height: $thumb-h;
+  min-width: $thumb-w;
+}
+
+.active-thumbnail {
+  border: 3px solid $active-border !important;
+  border-radius: 8px;
+}
+
+.thumbnail-placeholder {
+  width: $thumb-w;
+  height: 68px;
+  min-width: $thumb-w;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: rgba(127, 127, 127, 0.25);
+  color: var(--text-muted, #ebebeb);
+  font-weight: bold;
+  font-size: 0.8em;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  margin: auto 4px;
+  overflow: hidden;
+}
+
+// --- Icon buttons ---
+%icon-btn {
+  position: absolute;
+  z-index: 110;
+  background: $btn-bg;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 5px;
+  width: $btn-size;
+  height: $btn-size;
+  min-width: $btn-size;
+  min-height: $btn-size;
+  opacity: 0.7;
+  box-sizing: border-box;
+  font-size: 0;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+    margin: auto;
+    pointer-events: none;
+    stroke-width: 2px;
+  }
+
+  &:hover {
+    opacity: 1;
+    background: $btn-bg-hover;
+  }
+}
+
+.slider-btn,
+.fullscreen-btn,
+.copy-btn {
+  @extend %icon-btn;
+}
+
+.fullscreen-btn {
+  top: 10px;
+  right: 40px;
+}
+
+.copy-btn {
+  top: 10px;
+  right: 74px;
+}
+
+.slider-btn.prev {
+  top: 50%;
+  left: 10px;
+  transform: translateY(-50%);
+}
+
+.slider-btn.next {
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+}
+
+// --- Zoom & pan ---
+.can-zoom {
+  cursor: zoom-in;
+
+  &.zoomed {
+    cursor: grab;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+}
+
+.img-transformed {
+  transition: transform 0.2s ease-out;
+  transform-origin: center;
+
+  &.dragging {
+    transition: none;
+  }
+}
+
+// --- PDF ---
+.pdf-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.pdf-media {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+// --- Transitions ---
+// Generated from a list of effect names. Each gets an -in and -out class.
+$effects: fade, zoom, slide-up, slide-down, flip, flip-vertical, rotate, blur,
+  squeeze;
+
+@each $name in $effects {
+  .transition-#{$name}-out {
+    transition: all $transition-dur $transition-ease;
+  }
+  .transition-#{$name}-in {
+    transition: all $transition-dur $transition-ease;
+  }
+}
+
+// Fade
+.transition-fade-out {
+  opacity: 0;
+  transition: opacity $transition-dur $transition-ease;
+}
+.transition-fade-in {
+  opacity: 1;
+  transition: opacity $transition-dur $transition-ease;
+}
+
+// Slide (horizontal, direction-aware)
+.transition-slide-next-out {
+  transform: translateX(-100%);
+  transition: transform $transition-dur $transition-ease;
+}
+.transition-slide-prev-out {
+  transform: translateX(100%);
+  transition: transform $transition-dur $transition-ease;
+}
+.transition-slide-next-in,
+.transition-slide-prev-in {
+  transform: translateX(0);
+  transition: transform $transition-dur $transition-ease;
+}
+
+// Zoom
+.transition-zoom-out {
+  transform: scale(0.5);
+  opacity: 0;
+}
+.transition-zoom-in {
+  transform: scale(1);
+  opacity: 1;
+}
+
+// Slide up / down
+.transition-slide-up-out {
+  transform: translateY(100%);
+}
+.transition-slide-up-in {
+  transform: translateY(0);
+}
+.transition-slide-down-out {
+  transform: translateY(-100%);
+}
+.transition-slide-down-in {
+  transform: translateY(0);
+}
+
+// Flip
+.transition-flip-out {
+  transform: perspective(400px) rotateY(90deg);
+  opacity: 0;
+}
+.transition-flip-in {
+  transform: perspective(400px) rotateY(0);
+  opacity: 1;
+}
+
+// Flip vertical
+.transition-flip-vertical-out {
+  transform: perspective(400px) rotateX(90deg);
+  opacity: 0;
+}
+.transition-flip-vertical-in {
+  transform: perspective(400px) rotateX(0);
+  opacity: 1;
+}
+
+// Rotate
+.transition-rotate-out {
+  transform: rotate(180deg) scale(0.5);
+  opacity: 0;
+}
+.transition-rotate-in {
+  transform: rotate(0) scale(1);
+  opacity: 1;
+}
+
+// Blur
+.transition-blur-out {
+  filter: blur(20px);
+  opacity: 0;
+}
+.transition-blur-in {
+  filter: blur(0);
+  opacity: 1;
+}
+
+// Squeeze
+.transition-squeeze-out {
+  transform: scaleX(0);
+  opacity: 0;
+}
+.transition-squeeze-in {
+  transform: scaleX(1);
+  opacity: 1;
+}
