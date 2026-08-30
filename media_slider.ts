@@ -52,6 +52,8 @@ interface SliderOptions {
   enhancedView: boolean;
   fileTypes: string[] | null;
   recursive: boolean;
+  showThumbnailToggle: boolean;
+  thumbnailsCollapsedByDefault: boolean;
 }
 
 const DEFAULT_OPTIONS: SliderOptions = {
@@ -68,6 +70,8 @@ const DEFAULT_OPTIONS: SliderOptions = {
   enhancedView: true,
   fileTypes: null,
   recursive: false,
+  showThumbnailToggle: true,
+  thumbnailsCollapsedByDefault: false,
 };
 
 const IMAGE_EXT = ["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "avif"];
@@ -224,6 +228,12 @@ function mergeOptions(base: SliderOptions, parsed: any): SliderOptions {
     out.enhancedView = String(out.enhancedView).toLowerCase() === "true";
   if (typeof out.recursive === "string")
     out.recursive = String(out.recursive).toLowerCase() === "true";
+  if (typeof out.showThumbnailToggle === "string")
+    out.showThumbnailToggle =
+      String(out.showThumbnailToggle).toLowerCase() === "true";
+  if (typeof out.thumbnailsCollapsedByDefault === "string")
+    out.thumbnailsCollapsedByDefault =
+      String(out.thumbnailsCollapsedByDefault).toLowerCase() === "true";
   if (
     out.thumbnailPosition !== "top" &&
     out.thumbnailPosition !== "bottom" &&
@@ -640,14 +650,48 @@ function bootSlider(root, slides, opts) {
     }
   }
 
+  // Thumbnail collapse toggle button (matches the original plugin).
+  let thumbToggleBtn = null;
+  if (thumbContainer && opts.showThumbnailToggle) {
+    thumbToggleBtn = el("button", "ms-thumbnail-toggle-btn");
+    if (verticalThumbs) thumbToggleBtn.classList.add("ms-vertical");
+    thumbToggleBtn.innerHTML = verticalThumbs ? iconChevronLeft() : iconChevronDown();
+    if (opts.thumbnailsCollapsedByDefault) {
+      thumbContainer.classList.add("ms-collapsed");
+      thumbToggleBtn.innerHTML = verticalThumbs ? iconChevronRight() : iconChevronUp();
+    }
+    thumbToggleBtn.onclick = () => {
+      const isCollapsed = thumbContainer.classList.toggle("ms-collapsed");
+      thumbToggleBtn.innerHTML = verticalThumbs
+        ? (isCollapsed ? iconChevronRight() : iconChevronLeft())
+        : (isCollapsed ? iconChevronUp() : iconChevronDown());
+      // Keep the host iframe height in sync as the thumbnail strip animates.
+      // Update on rAF frames while the transition runs, and a final update on
+      // transitionend — no setInterval polling.
+      let framesLeft = 20; // ~330ms at 60fps, matching the 0.3s transition
+      const onFrame = () => {
+        requestHeight();
+        if (framesLeft-- > 0) requestAnimationFrame(onFrame);
+      };
+      requestAnimationFrame(onFrame);
+      const onEnd = () => {
+        requestHeight();
+        thumbContainer.removeEventListener("transitionend", onEnd);
+      };
+      thumbContainer.addEventListener("transitionend", onEnd);
+    };
+  }
+
   // Lay out: thumbnails first if top/left.
   const section = el("div", "ms-thumbnail-section " + (verticalThumbs ? "ms-vertical" : "ms-horizontal"));
   if (opts.thumbnailPosition === "top" || opts.thumbnailPosition === "left") {
     section.appendChild(thumbContainer);
+    if (thumbToggleBtn) section.appendChild(thumbToggleBtn);
     root.appendChild(section);
     root.appendChild(content);
   } else if (thumbContainer) {
     root.appendChild(content);
+    if (thumbToggleBtn) section.appendChild(thumbToggleBtn);
     section.appendChild(thumbContainer);
     root.appendChild(section);
   } else {
@@ -831,7 +875,24 @@ function bootSlider(root, slides, opts) {
     return { image:"IMG", video:"VID", audio:"AUD", pdf:"PDF", markdown:"MD", youtube:"YT", unknown:"FILE" }[k] || "FILE";
   }
   function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
-  function requestHeight() { if (globalThis.parent) globalThis.parent.postMessage({ type: "setHeight", height: Math.max(document.body.offsetHeight, document.documentElement.offsetHeight) }, "*"); }
+  function requestHeight() {
+    if (!globalThis.parent) return;
+    // Measure the wrapper itself — it reflects the real laid-out height
+    // (including or excluding the thumbnail strip depending on its state),
+    // so the iframe both grows and shrinks correctly. Include the toggle
+    // button's height (it sits in the thumbnail section) plus a small buffer
+    // for margins/padding so content isn't clipped.
+    const sectionEls = root.querySelectorAll(".ms-thumbnail-section");
+    let extra = 0;
+    sectionEls.forEach((s) => { extra += s.offsetHeight; });
+    const h = Math.max(
+      root.scrollHeight,
+      root.offsetHeight,
+      document.body.scrollHeight,
+      document.body.offsetHeight,
+    ) + 18;
+    globalThis.parent.postMessage({ type: "setHeight", height: h }, "*");
+  }
 
   // Initial render + height polling.
   update();
@@ -841,6 +902,8 @@ function bootSlider(root, slides, opts) {
 
 function iconChevronLeft() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>'; }
 function iconChevronRight() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>'; }
+function iconChevronUp() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>'; }
+function iconChevronDown() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>'; }
 function iconMaximize() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>'; }
 function iconMinimize() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"></path><path d="M21 8h-3a2 2 0 0 1-2-2V3"></path><path d="M3 16h3a2 2 0 0 1 2 2v3"></path><path d="M16 21v-3a2 2 0 0 1 2-2h3"></path></svg>'; }
 function iconCopy() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>'; }

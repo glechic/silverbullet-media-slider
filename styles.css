@@ -1,5 +1,13 @@
 /* media-slider plug — bundled stylesheet (loaded into the widget iframe) */
 
+/* Disable scrollbars entirely in the widget iframe. */
+html, body {
+  overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+
 .ms-empty,
 .ms-error {
   padding: 1em;
@@ -124,15 +132,92 @@ img.slider-media { width: 100%; height: 100%; object-fit: contain; }
   overflow-x: auto; white-space: nowrap;
   width: 100%; margin: 10px 0;
   will-change: transform; contain: layout paint;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.thumbnail-container.horizontal::-webkit-scrollbar { display: none; }
 .thumbnail-container.vertical {
   display: flex; flex-direction: column;
   overflow-y: auto; margin: 10px 0; min-width: 95px;
   max-height: 360px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-.thumbnail-container::-webkit-scrollbar { height: 3px; width: 6px; }
-.thumbnail-container::-webkit-scrollbar-track { background: transparent; }
-.thumbnail-container::-webkit-scrollbar-thumb { background: rgba(127,127,127,0.5); border-radius: 3px; }
+.thumbnail-container.vertical::-webkit-scrollbar { display: none; }
+/* Thumbnail collapse toggle button (matches the original plugin). */
+.media-slider-wrapper .ms-thumbnail-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease, background 0.2s ease;
+  z-index: 10;
+  box-shadow: none;
+}
+.media-slider-wrapper .ms-thumbnail-toggle-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.6);
+}
+.media-slider-wrapper .ms-thumbnail-section.ms-horizontal .ms-thumbnail-toggle-btn {
+  width: 50px;
+  height: 20px;
+  border-radius: 0 0 4px 4px;
+  margin-top: -2px;
+}
+.media-slider-wrapper .ms-thumbnail-section.ms-horizontal .ms-thumbnail-toggle-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.media-slider-wrapper .ms-thumbnail-toggle-btn.ms-vertical {
+  width: 20px;
+  height: 100%;
+  min-height: 70px;
+  border-radius: 4px 0 0 4px;
+  margin-right: -2px;
+}
+.media-slider-wrapper .ms-thumbnail-toggle-btn.ms-vertical svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Collapsed state for horizontal thumbnails */
+.media-slider-wrapper .thumbnail-container.horizontal.ms-collapsed {
+  max-height: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
+}
+.media-slider-wrapper .thumbnail-container.horizontal:not(.ms-collapsed) {
+  max-height: 200px;
+  opacity: 1;
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+}
+
+/* Collapsed state for vertical thumbnails */
+.media-slider-wrapper .thumbnail-container.vertical.ms-collapsed {
+  max-width: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  transition: max-width 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
+}
+.media-slider-wrapper .thumbnail-container.vertical:not(.ms-collapsed) {
+  max-width: 120px;
+  opacity: 1;
+  transition: max-width 0.3s ease, opacity 0.2s ease;
+}
+
+/* All thumbnail scrollbars hidden (still scrollable via wheel/touch). */
+.thumbnail-container { scrollbar-width: none; -ms-overflow-style: none; }
+.thumbnail-container::-webkit-scrollbar { display: none; }
 
 .thumbnail {
   width: 98px; height: 70px;

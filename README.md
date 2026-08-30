@@ -85,6 +85,8 @@ A `.md` page referenced in the slider is rendered inline as a slide (read-only).
 | `enhancedView`          | bool    | `true`    | Show fullscreen + copy buttons; enable zoom/pan    |
 | `fileTypes`             | list    | all media | Extensions to include for folder expansion         |
 | `recursive`             | bool    | `false`   | Recurse into subfolders during folder expansion    |
+| `showThumbnailToggle`   | bool    | `true`    | Show the collapse/expand button on the thumbnail strip |
+| `thumbnailsCollapsedByDefault` | bool | `false` | Start with the thumbnail strip collapsed         |
 
 Transition effects: `fade`, `slide`, `zoom`, `slide-up`, `slide-down`,
 `flip`, `flip-vertical`, `rotate`, `blur`, `squeeze`.
