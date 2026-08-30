@@ -1,0 +1,13 @@
+name: media-slider
+requiredPermissions: []
+assets:
+  - "styles.css"
+functions:
+  mediaSliderWidget:
+    path: ./media_slider.ts:mediaSliderWidget
+    codeWidget: media-slider
+    renderMode: iframe
+  mediaSliderHelp:
+    path: ./media_slider.ts:mediaSliderHelp
+    command:
+      name: "Media Slider: Help"

@@ -1,0 +1,18 @@
+{
+  "name": "silverbullet-media-slider",
+  "version": "0.1.0",
+  "description": "A SilverBullet plug that renders image/audio/video/PDF/markdown media sliders inside fenced `media-slider` code blocks.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "plug-compile media-slider.plug.yaml",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@silverbulletmd/silverbullet": ">=2.5.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}
