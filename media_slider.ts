@@ -515,9 +515,65 @@ function bootSlider(root, slides, opts) {
     const fsBtn = el("button", "fullscreen-btn");
     fsBtn.innerHTML = iconMaximize();
     fsBtn.title = "Fullscreen";
+    // SilverBullet renders this widget inside a fixed-height iframe. The
+    // original plugin could fullscreen its wrapper directly, but here that
+    // only fills the iframe's small box. So we fullscreen the iframe element
+    // itself (same-origin about:blank → reachable via globalThis.frameElement)
+    // and toggle a class to expand the slider to fill it.
+    const target = globalThis.frameElement || root;
+    let isFs = false;
+    let savedIframeStyle = "";
+    let savedBodyStyle = "";
+    let savedHtmlStyle = "";
+    const enterFs = () => {
+      isFs = true;
+      root.classList.add("ms-fullscreen");
+      container.classList.add("fullscreen-slider");
+      fsBtn.innerHTML = iconMinimize();
+      // The iframe has a fixed pixel height from SilverBullet; reset it so the
+      // slider fills the fullscreen viewport instead of overflowing (scrollbar).
+      if (globalThis.frameElement) {
+        savedIframeStyle = globalThis.frameElement.getAttribute("style") || "";
+        globalThis.frameElement.style.cssText =
+          "width:100%!important;height:100%!important;border:0;position:fixed;inset:0;";
+      }
+      // Prevent the iframe's own document from scrolling.
+      savedBodyStyle = document.body.getAttribute("style") || "";
+      savedHtmlStyle = document.documentElement.getAttribute("style") || "";
+      document.body.style.cssText += "margin:0;height:100%;overflow:hidden;";
+      document.documentElement.style.cssText += "margin:0;height:100%;overflow:hidden;";
+    };
+    const exitFs = () => {
+      isFs = false;
+      root.classList.remove("ms-fullscreen");
+      container.classList.remove("fullscreen-slider");
+      fsBtn.innerHTML = iconMaximize();
+      if (globalThis.frameElement) {
+        globalThis.frameElement.setAttribute("style", savedIframeStyle);
+      }
+      document.body.setAttribute("style", savedBodyStyle);
+      document.documentElement.setAttribute("style", savedHtmlStyle);
+    };
+    // The fullscreenchange event fires in the parent document (which owns the
+    // iframe). Listen there if reachable; fall back to toggling on click.
+    try {
+      globalThis.parent.document.addEventListener("fullscreenchange", () => {
+        if (globalThis.parent.document.fullscreenElement) enterFs();
+        else exitFs();
+      });
+    } catch (e) {}
     fsBtn.onclick = () => {
-      if (!document.fullscreenElement) root.requestFullscreen().catch(() => {});
-      else document.exitFullscreen();
+      if (!isFs) {
+        target.requestFullscreen().catch((err) =>
+          console.error("Error enabling fullscreen:", err),
+        );
+        if (!globalThis.frameElement) enterFs();
+      } else {
+        (document.exitFullscreen || globalThis.parent?.document?.exitFullscreen)?.call(
+          globalThis.parent?.document || document,
+        );
+        if (!globalThis.frameElement) exitFs();
+      }
     };
     root.appendChild(fsBtn);
 
@@ -786,5 +842,6 @@ function bootSlider(root, slides, opts) {
 function iconChevronLeft() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>'; }
 function iconChevronRight() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>'; }
 function iconMaximize() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>'; }
+function iconMinimize() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"></path><path d="M21 8h-3a2 2 0 0 1-2-2V3"></path><path d="M3 16h3a2 2 0 0 1 2 2v3"></path><path d="M16 21v-3a2 2 0 0 1 2-2h3"></path></svg>'; }
 function iconCopy() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>'; }
 `;
