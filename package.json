@@ -6,7 +6,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "plug-compile media-slider.plug.yaml",
+    "build": "mkdir -p build && cp src/media-slider.plug.yaml build/ && plug-compile --dist build build/media-slider.plug.yaml",
     "check": "tsc --noEmit"
   },
   "dependencies": {

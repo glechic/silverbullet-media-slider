@@ -1,5 +1,3 @@
 node_modules
-*.plug.js
-*.plug.js.map
-styles.css
+build/
 .DS_Store

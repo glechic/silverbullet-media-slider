@@ -2,17 +2,20 @@ name: media-slider
 requiredPermissions: []
 build:
   - type: sass
-    in: styles.scss
+    in: ../src/styles.scss
     out: styles.css
+  - type: copy
+    in: ../src/slider_runtime.js
+    out: slider_runtime.js
 assets:
   - "styles.css"
   - "slider_runtime.js"
 functions:
   mediaSliderWidget:
-    path: ./media_slider.ts:mediaSliderWidget
+    path: ../src/media_slider.ts:mediaSliderWidget
     codeWidget: media-slider
     renderMode: iframe
   mediaSliderHelp:
-    path: ./media_slider.ts:mediaSliderHelp
+    path: ../src/media_slider.ts:mediaSliderHelp
     command:
       name: "Media Slider: Help"
