@@ -19,9 +19,6 @@ const KIND_LABELS: Record<string, string> = {
   image: "IMG", video: "VID", audio: "AUD", pdf: "PDF",
   markdown: "MD", youtube: "YT", unknown: "FILE",
 };
-function labelForKind(k: string): string {
-  return KIND_LABELS[k] ?? "FILE";
-}
 
 interface Props {
   slides: SlideDescriptor[];
@@ -102,14 +99,12 @@ export function Slider({ slides, options, root }: Props) {
       const mw = mediaWrapRef.current;
       if (!mw) return;
       mw.classList.remove(...ALL_TRANSITION_CLASSES);
-      let cls = "";
-      const dir = directionRef.current;
+      let cls: string;
       if (effect === "slide") {
-        cls = dir === "next"
-          ? (isIn ? "transition-slide-next-in" : "transition-slide-next-out")
-          : (isIn ? "transition-slide-prev-in" : "transition-slide-prev-out");
+        const d = directionRef.current === "next" ? "next" : "prev";
+        cls = `transition-slide-${d}-${isIn ? "in" : "out"}`;
       } else {
-        cls = `transition-${isIn ? effect + "-in" : effect + "-out"}`;
+        cls = `transition-${effect}-${isIn ? "in" : "out"}`;
       }
       mw.classList.add(cls || "transition-fade-in");
     },
@@ -185,9 +180,8 @@ export function Slider({ slides, options, root }: Props) {
   }, [idx, applyTransition, dur]);
 
   // Step 3: after the content swap commits, force reflow + apply in-class.
-  // Using a layout effect (useLayoutEffect) so it runs before the browser
-  // paints, with a double rAF to guarantee the out-class's opacity:0 is
-  // painted first.
+  // Runs after paint; force a reflow so the browser registers the
+  // out-class's opacity:0 state, then apply the in-class.
   useEffect(() => {
     if (isFirstDisplay.current) {
       isFirstDisplay.current = false;
@@ -305,7 +299,7 @@ export function Slider({ slides, options, root }: Props) {
   }, [isFullscreen, root, enterFs, exitFs]);
 
   const copyLink = useCallback(async () => {
-  const s = slides[displayedIdx];
+    const s = slides[displayedIdx];
     const link = s.remote ? s.src : `![[${s.rawPath || ""}]]`;
     try { await globalThis.syscall("editor.copyToClipboard", link); } catch { /* ignore */ }
   }, [slides, displayedIdx]);
@@ -326,6 +320,11 @@ export function Slider({ slides, options, root }: Props) {
   }, [requestHeight]);
 
   const s = slides[displayedIdx];
+
+  const thumbVClass = verticalThumbs ? " vertical-thumb" : "";
+  const setThumbRef = (i: number) => (el: Element | null) => {
+    if (el) thumbElsRef.current[i] = el as any;
+  };
 
   const sectionClass = `ms-thumbnail-section ${verticalThumbs ? "ms-vertical" : "ms-horizontal"}`;
   const thumbSection = options.carouselShowThumbnails && (
@@ -350,23 +349,19 @@ export function Slider({ slides, options, root }: Props) {
           const isImg = slide.kind === "image" || slide.kind === "youtube";
           return isImg ? (
             <img
-              class={`thumbnail${verticalThumbs ? " vertical-thumb" : ""}`}
+              class={`thumbnail${thumbVClass}`}
               data-src={slide.thumb || slide.src}
               loading="lazy"
-              ref={(el) => {
-                if (el) thumbElsRef.current[i] = el as any;
-              }}
+              ref={setThumbRef(i)}
               onClick={() => setIdx(i)}
             />
           ) : (
             <div
-              class={`thumbnail-placeholder${verticalThumbs ? " vertical-thumb" : ""}`}
-              ref={(el) => {
-                if (el) thumbElsRef.current[i] = el as any;
-              }}
+              class={`thumbnail-placeholder${thumbVClass}`}
+              ref={setThumbRef(i)}
               onClick={() => setIdx(i)}
             >
-              {labelForKind(slide.kind)}
+              {KIND_LABELS[slide.kind] ?? "FILE"}
             </div>
           );
         })}
@@ -440,50 +435,40 @@ function renderMedia(
   opts: SliderOptions,
 ): ComponentChild {
   if (!s) return null;
-  if (s.kind === "image") {
-    return <img class="slider-media" src={s.src} loading="lazy" />;
+  switch (s.kind) {
+    case "image":
+      return <img class="slider-media" src={s.src} loading="lazy" />;
+    case "video":
+      return (
+        <video class="slider-media" src={s.src} controls autoplay={opts.autoplay} />
+      );
+    case "audio":
+      return <audio class="slider-media audio-media" src={s.src} controls />;
+    case "pdf":
+      return (
+        <div class="pdf-container">
+          <iframe class="slider-media pdf-media" src={s.src} />
+        </div>
+      );
+    case "markdown":
+      return (
+        <div
+          class="markdown-content"
+          dangerouslySetInnerHTML={{ __html: mdHtml || "Loading…" }}
+        />
+      );
+    case "youtube":
+      return (
+        <iframe
+          class="slider-media"
+          src={s.embed || ""}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+        />
+      );
+    default:
+      return <a class="slider-media" href={s.src} target="_blank">Open file</a>;
   }
-  if (s.kind === "video") {
-    return (
-      <video
-        class="slider-media"
-        src={s.src}
-        controls
-        autoplay={opts.autoplay}
-      />
-    );
-  }
-  if (s.kind === "audio") {
-    return <audio class="slider-media audio-media" src={s.src} controls />;
-  }
-  if (s.kind === "pdf") {
-    return (
-      <div class="pdf-container">
-        <iframe class="slider-media pdf-media" src={s.src} />
-      </div>
-    );
-  }
-  if (s.kind === "markdown") {
-    return (
-      <div
-        class="markdown-content"
-        dangerouslySetInnerHTML={{ __html: mdHtml || "Loading…" }}
-      />
-    );
-  }
-  if (s.kind === "youtube") {
-    return (
-      <iframe
-        class="slider-media"
-        src={s.embed || ""}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen
-      />
-    );
-  }
-  return (
-    <a class="slider-media" href={s.src} target="_blank">Open file</a>
-  );
 }
 
 // --- Icons (inline SVG strings, hoisted as constants) ---
