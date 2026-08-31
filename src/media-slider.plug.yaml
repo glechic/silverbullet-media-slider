@@ -4,12 +4,11 @@ build:
   - type: sass
     in: ../src/styles.scss
     out: styles.css
-  - type: copy
-    in: ../src/slider_runtime.js
-    out: slider_runtime.js
+  - in: ../src/ui/index.tsx
+    out: slider_ui.js
 assets:
   - "styles.css"
-  - "slider_runtime.js"
+  - "slider_ui.js"
 functions:
   mediaSliderWidget:
     path: ../src/media_slider.ts:mediaSliderWidget

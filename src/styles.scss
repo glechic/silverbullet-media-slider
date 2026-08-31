@@ -232,6 +232,17 @@ body {
   }
 }
 
+// The keyed inner div that holds the current slide's media. It is recreated
+// on each slide change (key=displayedIdx) so transition classes animate the
+// new element, not a reused one with a swapped src.
+.media-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
 // --- Media elements ---
 .slider-media {
   max-width: 100%;

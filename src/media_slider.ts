@@ -387,10 +387,8 @@ async function renderSlider(
   options: SliderOptions,
 ): Promise<{ html: string; script: string }> {
   const id = options.sliderId || `ms-${++sliderCounter}`;
-  // Pre-serialize the slide model for the client script.
   const slides = entries.map((e) => slideDescriptor(e));
-  const dataAttr = escapeHtml(JSON.stringify(slides));
-  const optsAttr = escapeHtml(JSON.stringify({ ...options, sliderId: id }));
+  const optsJson = JSON.stringify({ ...options, sliderId: id });
 
   // Inline the bundled styles.css (decoded) so the iframe has styles
   // immediately, without an async syscall round-trip.
@@ -401,20 +399,25 @@ async function renderSlider(
     console.warn("[media-slider] could not read styles.css asset:", e);
   }
 
-  // Read the slider runtime JS (bundled as an asset) to run inside the iframe.
-  let script = "";
+  // Read the Preact UI bundle (esbuild IIFE) to run inside the iframe.
+  let uiJs = "";
   try {
-    script = await asset.readAsset("media-slider", "slider_runtime.js", "utf8");
+    uiJs = await asset.readAsset("media-slider", "slider_ui.js", "utf8");
   } catch (e) {
-    console.warn("[media-slider] could not read slider_runtime.js asset:", e);
+    console.warn("[media-slider] could not read slider_ui.js asset:", e);
   }
 
   const htmlParts: string[] = [];
   htmlParts.push(`<style>${css}</style>`);
   htmlParts.push(
-    `<div class="media-slider-wrapper" id="${id}" data-slides="${dataAttr}" data-options="${optsAttr}"></div>`,
+    `<div class="media-slider-wrapper" id="${id}"></div>`,
   );
   const html = htmlParts.join("\n");
+
+  // The UI bundle is eval'd as a classic script, so we pass slide/option data
+  // as hoisted `var` declarations (visible to the IIFE via closure). Using
+  // `var` (not const) is required for the closure trick to work.
+  const script = `var __SLIDES = ${JSON.stringify(slides)};\nvar __OPTIONS = ${optsJson};\n${uiJs}`;
 
   return { html, script };
 }
