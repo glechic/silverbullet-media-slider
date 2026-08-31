@@ -15,12 +15,12 @@ const ALL_TRANSITION_CLASSES = TRANSITIONS.flatMap((n) => [
   "transition-slide-prev-in", "transition-slide-prev-out",
 ]);
 
+const KIND_LABELS: Record<string, string> = {
+  image: "IMG", video: "VID", audio: "AUD", pdf: "PDF",
+  markdown: "MD", youtube: "YT", unknown: "FILE",
+};
 function labelForKind(k: string): string {
-  const map: Record<string, string> = {
-    image: "IMG", video: "VID", audio: "AUD", pdf: "PDF",
-    markdown: "MD", youtube: "YT", unknown: "FILE",
-  };
-  return map[k] ?? "FILE";
+  return KIND_LABELS[k] ?? "FILE";
 }
 
 interface Props {
@@ -30,19 +30,18 @@ interface Props {
 }
 
 export function Slider({ slides, options, root }: Props) {
-  const opts = options;
-  const effect = TRANSITIONS.includes(opts.transitionEffect)
-    ? opts.transitionEffect
+  const effect = TRANSITIONS.includes(options.transitionEffect)
+    ? options.transitionEffect
     : "fade";
-  const dur = Math.max(0, Number(opts.transitionDuration) || 300);
+  const dur = Math.max(0, Number(options.transitionDuration) || 300);
   const verticalThumbs =
-    opts.thumbnailPosition === "left" || opts.thumbnailPosition === "right";
+    options.thumbnailPosition === "left" || options.thumbnailPosition === "right";
 
   const [idx, setIdx] = useState(0);
   const directionRef = useRef<"next" | "prev">("next");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [thumbsCollapsed, setThumbsCollapsed] = useState(
-    opts.thumbnailsCollapsedByDefault,
+    options.thumbnailsCollapsedByDefault,
   );
   const [mdHtml, setMdHtml] = useState<string>("");
   const [displayedIdx, setDisplayedIdx] = useState(0);
@@ -56,11 +55,11 @@ export function Slider({ slides, options, root }: Props) {
 
   // CSS vars on the wrapper.
   useEffect(() => {
-    root.style.setProperty("--slider-width", opts.width);
-    root.style.setProperty("--slider-height", opts.height);
+    root.style.setProperty("--slider-width", options.width);
+    root.style.setProperty("--slider-height", options.height);
     root.style.setProperty("--transition-duration", dur + "ms");
     root.classList.add(verticalThumbs ? "flex-row" : "flex-column");
-  }, [opts.width, opts.height, dur, verticalThumbs]);
+  }, [options.width, options.height, dur, verticalThumbs]);
 
   const requestHeight = useCallback(() => {
     if (!globalThis.parent) return;
@@ -82,6 +81,19 @@ export function Slider({ slides, options, root }: Props) {
     directionRef.current = "next";
     setIdx((i) => (i + 1) % slides.length);
   }, [slides.length]);
+
+  const touchXRef = useRef(0);
+  const onKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === "ArrowLeft") { goPrev(); e.preventDefault(); }
+    else if (e.key === "ArrowRight") { goNext(); e.preventDefault(); }
+  }, [goPrev, goNext]);
+  const onTouchStart = useCallback((e: TouchEvent) => {
+    touchXRef.current = e.touches[0].clientX;
+  }, []);
+  const onTouchEnd = useCallback((e: TouchEvent) => {
+    const dx = touchXRef.current - e.changedTouches[0].clientX;
+    if (Math.abs(dx) > 50) { if (dx > 0) goNext(); else goPrev(); }
+  }, [goPrev, goNext]);
 
   // Apply transition classes to the media wrapper. Uses directionRef so the
   // callback identity is stable and doesn't re-trigger effects.
@@ -106,7 +118,7 @@ export function Slider({ slides, options, root }: Props) {
 
   // Force-load the active thumbnail image.
   useEffect(() => {
-    if (!opts.carouselShowThumbnails) return;
+    if (!options.carouselShowThumbnails) return;
     const active = thumbElsRef.current[idx];
     if (active && active.tagName === "IMG") {
       const ds = active.getAttribute("data-src");
@@ -130,7 +142,7 @@ export function Slider({ slides, options, root }: Props) {
         });
       }
     }
-  }, [idx, opts.carouselShowThumbnails, verticalThumbs]);
+  }, [idx, options.carouselShowThumbnails, verticalThumbs]);
 
   // Load markdown content when the displayed slide is markdown.
   useEffect(() => {
@@ -193,7 +205,7 @@ export function Slider({ slides, options, root }: Props) {
 
   // Lazy-load thumbnails via IntersectionObserver.
   useEffect(() => {
-    if (!opts.carouselShowThumbnails || !("IntersectionObserver" in window)) return;
+    if (!options.carouselShowThumbnails || !("IntersectionObserver" in window)) return;
     const container = thumbContainerRef.current;
     if (!container) return;
     const observer = new IntersectionObserver(
@@ -216,60 +228,19 @@ export function Slider({ slides, options, root }: Props) {
       if (t.tagName === "IMG" && t.getAttribute("data-src")) observer.observe(t);
     }
     return () => observer.disconnect();
-  }, [opts.carouselShowThumbnails]);
+  }, [options.carouselShowThumbnails]);
 
-  // Keyboard navigation.
-  useEffect(() => {
-    root.tabIndex = 0;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") { goPrev(); e.preventDefault(); }
-      else if (e.key === "ArrowRight") { goNext(); e.preventDefault(); }
-    };
-    root.addEventListener("keydown", onKey);
-    return () => root.removeEventListener("keydown", onKey);
-  }, [root, goPrev, goNext]);
-
-  // Wheel navigation.
-  useEffect(() => {
-    const onWheel = (e: WheelEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && target.matches && target.matches("input,textarea")) return;
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-        if (e.deltaX > 30) { goNext(); e.preventDefault(); }
-        else if (e.deltaX < -30) { goPrev(); e.preventDefault(); }
-      }
-    };
-    const content = root.querySelector(".slider-content");
-    content?.addEventListener("wheel", onWheel, { passive: false });
-    return () => content?.removeEventListener("wheel", onWheel);
-  }, [root, goPrev, goNext]);
-
-  // Touch swipe.
-  useEffect(() => {
-    const content = root.querySelector(".slider-content");
-    if (!content) return;
-    let touchX = 0;
-    const onStart = (e: TouchEvent) => { touchX = e.touches[0].clientX; };
-    const onEnd = (e: TouchEvent) => {
-      const dx = touchX - e.changedTouches[0].clientX;
-      if (Math.abs(dx) > 50) { if (dx > 0) goNext(); else goPrev(); }
-    };
-    content.addEventListener("touchstart", onStart);
-    content.addEventListener("touchend", onEnd);
-    return () => {
-      content.removeEventListener("touchstart", onStart);
-      content.removeEventListener("touchend", onEnd);
-    };
-  }, [root, goPrev, goNext]);
+  // Keyboard, wheel, and touch navigation are wired via Preact events on the
+  // .slider-content element (see JSX below) — no manual addEventListener.
 
   // Autoplay / slideshow.
   useEffect(() => {
-    if (opts.slideshowSpeed <= 0) return;
-    const id = setInterval(goNext, opts.slideshowSpeed * 1000);
+    if (options.slideshowSpeed <= 0) return;
+    const id = setInterval(goNext, options.slideshowSpeed * 1000);
     const onVis = () => { if (document.hidden) clearInterval(id); };
     document.addEventListener("visibilitychange", onVis);
     return () => { clearInterval(id); document.removeEventListener("visibilitychange", onVis); };
-  }, [opts.slideshowSpeed, goNext]);
+  }, [options.slideshowSpeed, goNext]);
 
   // Height polling on thumbnail toggle — needed in BOTH directions so the
   // iframe grows on expand and shrinks on collapse.
@@ -337,7 +308,7 @@ export function Slider({ slides, options, root }: Props) {
   const s = slides[displayedIdx];
     const link = s.remote ? s.src : `![[${s.rawPath || ""}]]`;
     try { await globalThis.syscall("editor.copyToClipboard", link); } catch { /* ignore */ }
-  }, [slides, idx]);
+  }, [slides, displayedIdx]);
 
   const toggleThumbs = useCallback(() => {
     setThumbsCollapsed((c) => !c);
@@ -357,17 +328,17 @@ export function Slider({ slides, options, root }: Props) {
   const s = slides[displayedIdx];
 
   const sectionClass = `ms-thumbnail-section ${verticalThumbs ? "ms-vertical" : "ms-horizontal"}`;
-  const thumbSection = opts.carouselShowThumbnails && (
+  const thumbSection = options.carouselShowThumbnails && (
     <div class={sectionClass}>
-      {opts.showThumbnailToggle && (
+      {options.showThumbnailToggle && (
         <button
           class={`ms-thumbnail-toggle-btn${verticalThumbs ? " ms-vertical" : ""}`}
           title="Toggle thumbnails"
           onClick={toggleThumbs}
           dangerouslySetInnerHTML={{
             __html: verticalThumbs
-              ? (thumbsCollapsed ? iconChevronRight() : iconChevronLeft())
-              : (thumbsCollapsed ? iconChevronUp() : iconChevronDown()),
+              ? (thumbsCollapsed ? ICON_CHEVRON_RIGHT : ICON_CHEVRON_LEFT)
+              : (thumbsCollapsed ? ICON_CHEVRON_UP : ICON_CHEVRON_DOWN),
           }}
         />
       )}
@@ -403,14 +374,20 @@ export function Slider({ slides, options, root }: Props) {
     </div>
   );
 
-  const mediaContent = renderMedia(s, mdHtml, mediaWrapRef, opts);
+  const mediaContent = renderMedia(s, mdHtml, options);
 
-  const thumbsFirst = opts.thumbnailPosition === "top" || opts.thumbnailPosition === "left";
+  const thumbsFirst = options.thumbnailPosition === "top" || options.thumbnailPosition === "left";
 
   return (
     <>
       {thumbsFirst && thumbSection}
-      <div class="slider-content">
+      <div
+        class="slider-content"
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         <div class={`slider-container${isFullscreen ? " fullscreen-slider" : ""}`}>
           <div ref={mediaWrapRef} class="media-wrapper">
             <div key={displayedIdx} class="media-inner">
@@ -419,7 +396,7 @@ export function Slider({ slides, options, root }: Props) {
           </div>
         </div>
         <div class="slider-caption-container">
-          {s.caption && opts.captionMode === "below" && (
+          {s.caption && options.captionMode === "below" && (
             <div class="slider-caption">{s.caption}</div>
           )}
         </div>
@@ -427,29 +404,29 @@ export function Slider({ slides, options, root }: Props) {
           class="slider-btn prev"
           title="Previous"
           onClick={goPrev}
-          dangerouslySetInnerHTML={{ __html: iconChevronLeft() }}
+          dangerouslySetInnerHTML={{ __html: ICON_CHEVRON_LEFT }}
         />
         <button
           class="slider-btn next"
           title="Next"
           onClick={goNext}
-          dangerouslySetInnerHTML={{ __html: iconChevronRight() }}
+          dangerouslySetInnerHTML={{ __html: ICON_CHEVRON_RIGHT }}
         />
       </div>
       {!thumbsFirst && thumbSection}
-      {opts.enhancedView && (
+      {options.enhancedView && (
         <>
           <button
             class="fullscreen-btn"
             title="Fullscreen"
             onClick={toggleFullscreen}
-            dangerouslySetInnerHTML={{ __html: isFullscreen ? iconMinimize() : iconMaximize() }}
+            dangerouslySetInnerHTML={{ __html: isFullscreen ? ICON_MINIMIZE : ICON_MAXIMIZE }}
           />
           <button
             class="copy-btn"
             title="Copy markdown link"
             onClick={copyLink}
-            dangerouslySetInnerHTML={{ __html: iconCopy() }}
+            dangerouslySetInnerHTML={{ __html: ICON_COPY }}
           />
         </>
       )}
@@ -460,7 +437,6 @@ export function Slider({ slides, options, root }: Props) {
 function renderMedia(
   s: SlideDescriptor,
   mdHtml: string,
-  _ref: any,
   opts: SliderOptions,
 ): ComponentChild {
   if (!s) return null;
@@ -510,25 +486,13 @@ function renderMedia(
   );
 }
 
-// --- Icons (inline SVG strings) ---
-function iconChevronLeft() {
-  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
-}
-function iconChevronRight() {
-  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-}
-function iconChevronUp() {
-  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>';
-}
-function iconChevronDown() {
-  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
-}
-function iconMaximize() {
-  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>';
-}
-function iconMinimize() {
-  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"></path><path d="M21 8h-3a2 2 0 0 1-2-2V3"></path><path d="M3 16h3a2 2 0 0 1 2 2v3"></path><path d="M16 21v-3a2 2 0 0 1 2-2h3"></path></svg>';
-}
-function iconCopy() {
-  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
-}
+// --- Icons (inline SVG strings, hoisted as constants) ---
+const SVG_ATTRS =
+  'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+const ICON_CHEVRON_LEFT = `<svg ${SVG_ATTRS}><polyline points="15 18 9 12 15 6"></polyline></svg>`;
+const ICON_CHEVRON_RIGHT = `<svg ${SVG_ATTRS}><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+const ICON_CHEVRON_UP = `<svg ${SVG_ATTRS}><polyline points="18 15 12 9 6 15"></polyline></svg>`;
+const ICON_CHEVRON_DOWN = `<svg ${SVG_ATTRS}><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+const ICON_MAXIMIZE = `<svg ${SVG_ATTRS}><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>`;
+const ICON_MINIMIZE = `<svg ${SVG_ATTRS}><path d="M8 3v3a2 2 0 0 1-2 2H3"></path><path d="M21 8h-3a2 2 0 0 1-2-2V3"></path><path d="M3 16h3a2 2 0 0 1 2 2v3"></path><path d="M16 21v-3a2 2 0 0 1 2-2h3"></path></svg>`;
+const ICON_COPY = `<svg ${SVG_ATTRS}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
