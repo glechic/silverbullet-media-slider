@@ -49,6 +49,8 @@ export function Slider({ slides, options, root }: Props) {
   const thumbContainerRef = useRef<HTMLDivElement>(null);
   const thumbElsRef = useRef<HTMLElement[]>([]);
   const savedFsState = useRef({ iframe: "", body: "", html: "" });
+  const mediaImgRef = useRef<HTMLImageElement>(null);
+  const sliderContainerRef = useRef<HTMLDivElement>(null);
 
   // CSS vars on the wrapper.
   useEffect(() => {
@@ -369,7 +371,8 @@ export function Slider({ slides, options, root }: Props) {
     </div>
   );
 
-  const mediaContent = renderMedia(s, mdHtml, options);
+  const mediaContent = renderMedia(s, mdHtml, options, mediaImgRef);
+  const isZoomable = s.kind === "image";
 
   const thumbsFirst = options.thumbnailPosition === "top" || options.thumbnailPosition === "left";
 
@@ -383,12 +386,15 @@ export function Slider({ slides, options, root }: Props) {
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        <div class={`slider-container${isFullscreen ? " fullscreen-slider" : ""}`}>
+        <div ref={sliderContainerRef} class={`slider-container${isFullscreen ? " fullscreen-slider" : ""}`}>
           <div ref={mediaWrapRef} class="media-wrapper">
             <div key={displayedIdx} class="media-inner">
               {mediaContent}
             </div>
           </div>
+          {options.enhancedView && isZoomable && (
+            <ZoomControls targetRef={mediaImgRef} containerRef={sliderContainerRef} slideKey={displayedIdx} />
+          )}
         </div>
         <div class="slider-caption-container">
           {s.caption && options.captionMode === "below" && (
@@ -433,11 +439,12 @@ function renderMedia(
   s: SlideDescriptor,
   mdHtml: string,
   opts: SliderOptions,
+  imgRef: preact.RefObject<HTMLImageElement>,
 ): ComponentChild {
   if (!s) return null;
   switch (s.kind) {
     case "image":
-      return <img class="slider-media" src={s.src} loading="lazy" />;
+      return <img class="slider-media can-zoom" src={s.src} loading="lazy" ref={imgRef as any} />;
     case "video":
       return (
         <video class="slider-media" src={s.src} controls autoplay={opts.autoplay} />
@@ -481,3 +488,159 @@ const ICON_CHEVRON_DOWN = `<svg ${SVG_ATTRS}><polyline points="6 9 12 15 18 9"><
 const ICON_MAXIMIZE = `<svg ${SVG_ATTRS}><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>`;
 const ICON_MINIMIZE = `<svg ${SVG_ATTRS}><path d="M8 3v3a2 2 0 0 1-2 2H3"></path><path d="M21 8h-3a2 2 0 0 1-2-2V3"></path><path d="M3 16h3a2 2 0 0 1 2 2v3"></path><path d="M16 21v-3a2 2 0 0 1 2-2h3"></path></svg>`;
 const ICON_COPY = `<svg ${SVG_ATTRS}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+const ICON_ZOOM_IN = `<svg ${SVG_ATTRS}><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`;
+const ICON_ZOOM_OUT = `<svg ${SVG_ATTRS}><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`;
+const ICON_RESET = `<svg ${SVG_ATTRS}><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>`;
+
+interface ZoomState {
+  scale: number;
+  tx: number;
+  ty: number;
+}
+
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 5;
+
+// Zoom & pan controls for an image media element. Renders +/-/reset buttons
+// over the slider container and wires dblclick-to-zoom, drag-to-pan, and
+// ctrl+wheel-to-zoom on the target image.
+function ZoomControls({ targetRef, containerRef, slideKey }: {
+  targetRef: preact.RefObject<HTMLImageElement>;
+  containerRef: preact.RefObject<HTMLElement>;
+  slideKey: number;
+}) {
+  const [state, setState] = useState<ZoomState>({ scale: 1, tx: 0, ty: 0 });
+  const dragRef = useRef<{ startX: number; startY: number } | null>(null);
+
+  const applyTransform = useCallback((s: ZoomState) => {
+    const img = targetRef.current;
+    if (!img) return;
+    img.style.transform = `translate(${s.tx}px, ${s.ty}px) scale(${s.scale})`;
+    img.classList.add("img-transformed");
+    img.classList.toggle("zoomed", s.scale > 1);
+  }, [targetRef]);
+
+  // Reset whenever the displayed slide changes.
+  useEffect(() => {
+    setState({ scale: 1, tx: 0, ty: 0 });
+  }, [slideKey]);
+
+  useEffect(() => {
+    applyTransform(state);
+  }, [state, applyTransform]);
+
+  const zoomAt = useCallback((delta: number, cx: number, cy: number) => {
+    const img = targetRef.current;
+    const container = containerRef.current;
+    if (!img || !container) return;
+    const rect = img.getBoundingClientRect();
+    const imgCenterX = rect.left + rect.width / 2;
+    const imgCenterY = rect.top + rect.height / 2;
+    const offsetX = cx - imgCenterX;
+    const offsetY = cy - imgCenterY;
+    setState((prev) => {
+      const oldScale = prev.scale;
+      const scale = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev.scale + delta));
+      if (scale === oldScale) return prev;
+      let tx = prev.tx;
+      let ty = prev.ty;
+      if (delta > 0) {
+        tx -= offsetX * (scale / oldScale - 1);
+        ty -= offsetY * (scale / oldScale - 1);
+      } else {
+        tx = prev.tx * (scale / oldScale);
+        ty = prev.ty * (scale / oldScale);
+      }
+      return { scale, tx, ty };
+    });
+  }, [targetRef, containerRef]);
+
+  const onZoomIn = useCallback((e: Event) => {
+    e.stopPropagation();
+    const r = containerRef.current?.getBoundingClientRect();
+    if (r) zoomAt(0.5, r.left + r.width / 2, r.top + r.height / 2);
+  }, [containerRef, zoomAt]);
+
+  const onZoomOut = useCallback((e: Event) => {
+    e.stopPropagation();
+    const r = containerRef.current?.getBoundingClientRect();
+    if (r) zoomAt(-0.5, r.left + r.width / 2, r.top + r.height / 2);
+  }, [containerRef, zoomAt]);
+
+  const onReset = useCallback((e: Event) => {
+    e.stopPropagation();
+    setState({ scale: 1, tx: 0, ty: 0 });
+  }, []);
+
+  // dblclick toggles zoom-to-point; ctrl+wheel zooms; drag pans.
+  useEffect(() => {
+    const img = targetRef.current;
+    const container = containerRef.current;
+    if (!img || !container) return;
+
+    const onDblClick = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setState((prev) => {
+        if (prev.scale > 1) return { scale: 1, tx: 0, ty: 0 };
+        const rect = img.getBoundingClientRect();
+        const cx = (e.clientX - rect.left) / rect.width;
+        const cy = (e.clientY - rect.top) / rect.height;
+        const scale = 1.25;
+        return {
+          scale,
+          tx: -(cx * rect.width * (scale - 1)),
+          ty: -(cy * rect.height * (scale - 1)),
+        };
+      });
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = e.deltaY < 0 ? 0.2 : -0.2;
+      const rect = container.getBoundingClientRect();
+      zoomAt(delta, e.clientX - rect.left, e.clientY - rect.top);
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (state.scale <= 1) return;
+      dragRef.current = { startX: e.clientX - state.tx, startY: e.clientY - state.ty };
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      setState((prev) => ({ ...prev, tx: e.clientX - dragRef.current!.startX, ty: e.clientY - dragRef.current!.startY }));
+      e.preventDefault();
+    };
+    const onMouseUp = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      dragRef.current = null;
+      e.preventDefault();
+    };
+
+    img.addEventListener("dblclick", onDblClick);
+    container.addEventListener("wheel", onWheel, { passive: false });
+    img.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      img.removeEventListener("dblclick", onDblClick);
+      container.removeEventListener("wheel", onWheel);
+      img.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [targetRef, containerRef, state.scale, zoomAt]);
+
+  const disabled = state.scale <= ZOOM_MIN && state.tx === 0 && state.ty === 0;
+  return (
+    <div class="zoom-controls" style={{ opacity: state.scale > 1 ? 1 : 0.5 }}>
+      <button class="zoom-btn" title="Zoom in" onClick={onZoomIn} dangerouslySetInnerHTML={{ __html: ICON_ZOOM_IN }} />
+      <button class="zoom-btn" title="Zoom out" onClick={onZoomOut} disabled={state.scale <= ZOOM_MIN} dangerouslySetInnerHTML={{ __html: ICON_ZOOM_OUT }} />
+      <button class="zoom-btn" title="Reset zoom" onClick={onReset} disabled={disabled} dangerouslySetInnerHTML={{ __html: ICON_RESET }} />
+    </div>
+  );
+}

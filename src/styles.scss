@@ -439,6 +439,21 @@ audio.slider-media.audio-media {
   right: 74px;
 }
 
+// --- Zoom controls ---
+.zoom-controls {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 110;
+  display: flex;
+  gap: 4px;
+}
+
+.zoom-btn {
+  @extend %icon-btn;
+  position: static; // override absolute positioning from %icon-btn
+}
+
 .slider-btn.prev {
   top: 50%;
   left: 10px;
