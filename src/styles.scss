@@ -454,6 +454,13 @@ audio.slider-media.audio-media {
   position: static; // override absolute positioning from %icon-btn
 }
 
+.zoom-drag-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  cursor: grabbing;
+}
+
 .slider-btn.prev {
   top: 50%;
   left: 10px;

@@ -64,6 +64,7 @@ export function Slider({ slides, options, root }: Props) {
   const savedFsState = useRef({ iframe: "", body: "", html: "" });
   const mediaImgRef = useRef<HTMLImageElement>(null);
   const sliderContainerRef = useRef<HTMLDivElement>(null);
+  const zoom = useZoomPan(mediaImgRef, displayedIdx);
 
   // CSS vars on the wrapper.
   useEffect(() => {
@@ -382,8 +383,17 @@ export function Slider({ slides, options, root }: Props) {
     </div>
   );
 
-  const mediaContent = renderMedia(s, mdHtml, options, mediaImgRef);
+  const mediaContent = renderMedia(s, mdHtml, options, mediaImgRef, zoom.handlers);
   const isZoomable = s.kind === "image";
+
+  const onZoomInBtn = useCallback(() => {
+    const r = sliderContainerRef.current?.getBoundingClientRect();
+    if (r) zoom.zoomAt(0.5, r.left + r.width / 2, r.top + r.height / 2);
+  }, [zoom]);
+  const onZoomOutBtn = useCallback(() => {
+    const r = sliderContainerRef.current?.getBoundingClientRect();
+    if (r) zoom.zoomAt(-0.5, r.left + r.width / 2, r.top + r.height / 2);
+  }, [zoom]);
 
   const thumbsFirst = options.thumbnailPosition === "top" || options.thumbnailPosition === "left";
 
@@ -397,14 +407,30 @@ export function Slider({ slides, options, root }: Props) {
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        <div ref={sliderContainerRef} class={cx("slider-container", { "fullscreen-slider": isFullscreen })}>
+        <div
+          ref={sliderContainerRef}
+          class={cx("slider-container", { "fullscreen-slider": isFullscreen })}
+          onWheel={isZoomable ? zoom.handlers.onWheel : undefined}
+        >
           <div ref={mediaWrapRef} class="media-wrapper">
             <div key={displayedIdx} class="media-inner">
               {mediaContent}
             </div>
           </div>
           {options.enhancedView && isZoomable && (
-            <ZoomControls targetRef={mediaImgRef} containerRef={sliderContainerRef} slideKey={displayedIdx} />
+            <ZoomControls
+              state={zoom.state}
+              onZoomIn={onZoomInBtn}
+              onZoomOut={onZoomOutBtn}
+              onReset={zoom.reset}
+            />
+          )}
+          {zoom.dragging && (
+            <div
+              class="zoom-drag-overlay"
+              onMouseMove={zoom.onDragMove}
+              onMouseUp={zoom.onDragEnd}
+            />
           )}
         </div>
         <div class="slider-caption-container">
@@ -455,11 +481,21 @@ function renderMedia(
   mdHtml: string,
   opts: SliderOptions,
   imgRef: preact.RefObject<HTMLImageElement>,
+  handlers?: ZoomHandlers,
 ): ComponentChild {
   if (!s) return null;
   switch (s.kind) {
     case "image":
-      return <img class="slider-media can-zoom" src={s.src} loading="lazy" ref={imgRef as any} />;
+      return (
+        <img
+          class="slider-media can-zoom"
+          src={s.src}
+          loading="lazy"
+          ref={imgRef as any}
+          onClick={handlers?.onClick}
+          onMouseDown={handlers?.onMouseDown}
+        />
+      );
     case "video":
       return (
         <video class="slider-media" src={s.src} controls autoplay={opts.autoplay} />
@@ -502,16 +538,20 @@ interface ZoomState {
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 5;
 
-// Zoom & pan controls for an image media element. Renders +/-/reset buttons
-// over the slider container and wires dblclick-to-zoom, drag-to-pan, and
-// ctrl+wheel-to-zoom on the target image.
-function ZoomControls({ targetRef, containerRef, slideKey }: {
-  targetRef: preact.RefObject<HTMLImageElement>;
-  containerRef: preact.RefObject<HTMLElement>;
-  slideKey: number;
-}) {
+type ZoomHandlers = {
+  onClick: (e: MouseEvent) => void;
+  onMouseDown: (e: MouseEvent) => void;
+  onWheel: (e: WheelEvent) => void;
+};
+
+// Zoom & pan state + handlers for an image. Returns Preact event handlers to
+// attach to the <img> (onClick toggles zoom-to-point, onMouseDown starts a
+// drag, onWheel zooms with ctrl/cmd). Document mousemove/mouseup are tracked
+// only while dragging. transform-origin is center.
+function useZoomPan(targetRef: preact.RefObject<HTMLImageElement>, slideKey: number) {
   const [state, setState] = useState<ZoomState>({ scale: 1, tx: 0, ty: 0 });
-  const dragRef = useRef<{ startX: number; startY: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const dragStartRef = useRef({ startX: 0, startY: 0 });
 
   const applyTransform = useCallback((s: ZoomState) => {
     const img = targetRef.current;
@@ -532,8 +572,7 @@ function ZoomControls({ targetRef, containerRef, slideKey }: {
 
   const zoomAt = useCallback((delta: number, cx: number, cy: number) => {
     const img = targetRef.current;
-    const container = containerRef.current;
-    if (!img || !container) return;
+    if (!img) return;
     const rect = img.getBoundingClientRect();
     const imgCenterX = rect.left + rect.width / 2;
     const imgCenterY = rect.top + rect.height / 2;
@@ -554,91 +593,81 @@ function ZoomControls({ targetRef, containerRef, slideKey }: {
       }
       return { scale, tx, ty };
     });
-  }, [targetRef, containerRef]);
+  }, [targetRef]);
 
-  const onZoomIn = useCallback((e: Event) => {
+  const onClick = useCallback((e: MouseEvent) => {
+    if (dragging) return; // ignore clicks ending a drag
+    e.preventDefault();
     e.stopPropagation();
-    const r = containerRef.current?.getBoundingClientRect();
-    if (r) zoomAt(0.5, r.left + r.width / 2, r.top + r.height / 2);
-  }, [containerRef, zoomAt]);
+    const img = targetRef.current;
+    if (!img) return;
+    setState((prev) => {
+      if (prev.scale > 1) return { scale: 1, tx: 0, ty: 0 };
+      const rect = img.getBoundingClientRect();
+      const cx = (e.clientX - rect.left) / rect.width;
+      const cy = (e.clientY - rect.top) / rect.height;
+      const scale = 1.25;
+      return {
+        scale,
+        tx: -(cx - 0.5) * rect.width * (scale - 1),
+        ty: -(cy - 0.5) * rect.height * (scale - 1),
+      };
+    });
+  }, [targetRef, dragging]);
 
-  const onZoomOut = useCallback((e: Event) => {
-    e.stopPropagation();
-    const r = containerRef.current?.getBoundingClientRect();
-    if (r) zoomAt(-0.5, r.left + r.width / 2, r.top + r.height / 2);
-  }, [containerRef, zoomAt]);
-
-  const onReset = useCallback((e: Event) => {
-    e.stopPropagation();
-    setState({ scale: 1, tx: 0, ty: 0 });
+  const onMouseDown = useCallback((e: MouseEvent) => {
+    setState((prev) => {
+      if (prev.scale <= 1) return prev;
+      dragStartRef.current = { startX: e.clientX - prev.tx, startY: e.clientY - prev.ty };
+      setDragging(true);
+      e.preventDefault();
+      e.stopPropagation();
+      return prev;
+    });
   }, []);
 
-  // dblclick toggles zoom-to-point; ctrl+wheel zooms; drag pans.
-  useEffect(() => {
-    const img = targetRef.current;
-    const container = containerRef.current;
-    if (!img || !container) return;
+  const onDragMove = useCallback((e: MouseEvent) => {
+    e.preventDefault();
+    setState((prev) => ({
+      ...prev,
+      tx: e.clientX - dragStartRef.current.startX,
+      ty: e.clientY - dragStartRef.current.startY,
+    }));
+  }, []);
 
-    const onClick = (e: MouseEvent) => {
-      // Ignore clicks that end a drag.
-      if (dragRef.current) return;
-      e.preventDefault();
-      e.stopPropagation();
-      setState((prev) => {
-        if (prev.scale > 1) return { scale: 1, tx: 0, ty: 0 };
-        const rect = img.getBoundingClientRect();
-        const cx = (e.clientX - rect.left) / rect.width;
-        const cy = (e.clientY - rect.top) / rect.height;
-        const scale = 1.25;
-        // transform-origin is center, so offset from the image center.
-        return {
-          scale,
-          tx: -(cx - 0.5) * rect.width * (scale - 1),
-          ty: -(cy - 0.5) * rect.height * (scale - 1),
-        };
-      });
-    };
+  const onDragEnd = useCallback((e: MouseEvent) => {
+    e.preventDefault();
+    setDragging(false);
+  }, []);
 
-    const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const delta = e.deltaY < 0 ? 0.2 : -0.2;
-      const rect = container.getBoundingClientRect();
-      zoomAt(delta, e.clientX - rect.left, e.clientY - rect.top);
-    };
+  const onWheel = useCallback((e: WheelEvent) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = e.deltaY < 0 ? 0.2 : -0.2;
+    zoomAt(delta, e.clientX, e.clientY);
+  }, [zoomAt]);
 
-    const onMouseDown = (e: MouseEvent) => {
-      if (state.scale <= 1) return;
-      dragRef.current = { startX: e.clientX - state.tx, startY: e.clientY - state.ty };
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    const onMouseMove = (e: MouseEvent) => {
-      if (!dragRef.current) return;
-      setState((prev) => ({ ...prev, tx: e.clientX - dragRef.current!.startX, ty: e.clientY - dragRef.current!.startY }));
-      e.preventDefault();
-    };
-    const onMouseUp = (e: MouseEvent) => {
-      if (!dragRef.current) return;
-      dragRef.current = null;
-      e.preventDefault();
-    };
+  const reset = useCallback(() => setState({ scale: 1, tx: 0, ty: 0 }), []);
 
-    img.addEventListener("click", onClick);
-    container.addEventListener("wheel", onWheel, { passive: false });
-    img.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
-    return () => {
-      img.removeEventListener("click", onClick);
-      container.removeEventListener("wheel", onWheel);
-      img.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-    };
-  }, [targetRef, containerRef, state.scale, zoomAt]);
+  return {
+    state,
+    handlers: { onClick, onMouseDown, onWheel } as ZoomHandlers,
+    reset,
+    zoomAt,
+    dragging,
+    onDragMove,
+    onDragEnd,
+  };
+}
 
+// Zoom +/-/reset button cluster.
+function ZoomControls({ state, onZoomIn, onZoomOut, onReset }: {
+  state: ZoomState;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onReset: () => void;
+}) {
   const disabled = state.scale <= ZOOM_MIN && state.tx === 0 && state.ty === 0;
   return (
     <div class="zoom-controls" style={{ opacity: state.scale > 1 ? 1 : 0.5 }}>

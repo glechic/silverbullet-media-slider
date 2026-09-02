@@ -1,5 +1,5 @@
 import { render } from "preact";
-import { Slider } from "./Slider.tsx";
+import { Slider } from "./Slider";
 
 // These are injected as hoisted `var` declarations before this bundle by the
 // plug's render function (see media_slider.ts). Using `var` (not const) means
