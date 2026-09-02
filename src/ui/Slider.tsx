@@ -336,12 +336,11 @@ export function Slider({ slides, options, root }: Props) {
           class={cx("ms-thumbnail-toggle-btn", { "ms-vertical": verticalThumbs })}
           title="Toggle thumbnails"
           onClick={toggleThumbs}
-          dangerouslySetInnerHTML={{
-            __html: verticalThumbs
-              ? (thumbsCollapsed ? ICON_CHEVRON_RIGHT : ICON_CHEVRON_LEFT)
-              : (thumbsCollapsed ? ICON_CHEVRON_UP : ICON_CHEVRON_DOWN),
-          }}
-        />
+        >
+          {verticalThumbs
+            ? (thumbsCollapsed ? <IconChevronRight /> : <IconChevronLeft />)
+            : (thumbsCollapsed ? <IconChevronUp /> : <IconChevronDown />)}
+        </button>
       )}
       <div
         ref={thumbContainerRef as any}
@@ -405,14 +404,16 @@ export function Slider({ slides, options, root }: Props) {
           class="slider-btn prev"
           title="Previous"
           onClick={goPrev}
-          dangerouslySetInnerHTML={{ __html: ICON_CHEVRON_LEFT }}
-        />
+        >
+          <IconChevronLeft />
+        </button>
         <button
           class="slider-btn next"
           title="Next"
           onClick={goNext}
-          dangerouslySetInnerHTML={{ __html: ICON_CHEVRON_RIGHT }}
-        />
+        >
+          <IconChevronRight />
+        </button>
       </div>
       {!thumbsFirst && thumbSection}
       {options.enhancedView && (
@@ -421,14 +422,16 @@ export function Slider({ slides, options, root }: Props) {
             class="fullscreen-btn"
             title="Fullscreen"
             onClick={toggleFullscreen}
-            dangerouslySetInnerHTML={{ __html: isFullscreen ? ICON_MINIMIZE : ICON_MAXIMIZE }}
-          />
+          >
+            {isFullscreen ? <IconMinimize /> : <IconMaximize />}
+          </button>
           <button
             class="copy-btn"
             title="Copy markdown link"
             onClick={copyLink}
-            dangerouslySetInnerHTML={{ __html: ICON_COPY }}
-          />
+          >
+            <IconCopy />
+          </button>
         </>
       )}
     </>
@@ -478,19 +481,66 @@ function renderMedia(
   }
 }
 
-// --- Icons (inline SVG strings, hoisted as constants) ---
-const SVG_ATTRS =
-  'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
-const ICON_CHEVRON_LEFT = `<svg ${SVG_ATTRS}><polyline points="15 18 9 12 15 6"></polyline></svg>`;
-const ICON_CHEVRON_RIGHT = `<svg ${SVG_ATTRS}><polyline points="9 18 15 12 9 6"></polyline></svg>`;
-const ICON_CHEVRON_UP = `<svg ${SVG_ATTRS}><polyline points="18 15 12 9 6 15"></polyline></svg>`;
-const ICON_CHEVRON_DOWN = `<svg ${SVG_ATTRS}><polyline points="6 9 12 15 18 9"></polyline></svg>`;
-const ICON_MAXIMIZE = `<svg ${SVG_ATTRS}><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>`;
-const ICON_MINIMIZE = `<svg ${SVG_ATTRS}><path d="M8 3v3a2 2 0 0 1-2 2H3"></path><path d="M21 8h-3a2 2 0 0 1-2-2V3"></path><path d="M3 16h3a2 2 0 0 1 2 2v3"></path><path d="M16 21v-3a2 2 0 0 1 2-2h3"></path></svg>`;
-const ICON_COPY = `<svg ${SVG_ATTRS}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
-const ICON_ZOOM_IN = `<svg ${SVG_ATTRS}><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`;
-const ICON_ZOOM_OUT = `<svg ${SVG_ATTRS}><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`;
-const ICON_RESET = `<svg ${SVG_ATTRS}><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>`;
+// --- Icons (Preact components, no dangerouslySetInnerHTML) ---
+const SvgIcon = ({ children }: { children: ComponentChild }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    {children}
+  </svg>
+);
+const IconChevronLeft = () => <SvgIcon><polyline points="15 18 9 12 15 6"></polyline></SvgIcon>;
+const IconChevronRight = () => <SvgIcon><polyline points="9 18 15 12 9 6"></polyline></SvgIcon>;
+const IconChevronUp = () => <SvgIcon><polyline points="18 15 12 9 6 15"></polyline></SvgIcon>;
+const IconChevronDown = () => <SvgIcon><polyline points="6 9 12 15 18 9"></polyline></SvgIcon>;
+const IconMaximize = () => (
+  <SvgIcon>
+    <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
+    <path d="M21 8V5a2 2 0 0 0-2-2h-3"></path>
+    <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+    <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
+  </SvgIcon>
+);
+const IconMinimize = () => (
+  <SvgIcon>
+    <path d="M8 3v3a2 2 0 0 1-2 2H3"></path>
+    <path d="M21 8h-3a2 2 0 0 1-2-2V3"></path>
+    <path d="M3 16h3a2 2 0 0 1 2 2v3"></path>
+    <path d="M16 21v-3a2 2 0 0 1 2-2h3"></path>
+  </SvgIcon>
+);
+const IconCopy = () => (
+  <SvgIcon>
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+  </SvgIcon>
+);
+const IconZoomIn = () => (
+  <SvgIcon>
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    <line x1="11" y1="8" x2="11" y2="14"></line>
+    <line x1="8" y1="11" x2="14" y2="11"></line>
+  </SvgIcon>
+);
+const IconZoomOut = () => (
+  <SvgIcon>
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    <line x1="8" y1="11" x2="14" y2="11"></line>
+  </SvgIcon>
+);
+const IconReset = () => (
+  <SvgIcon>
+    <polyline points="1 4 1 10 7 10"></polyline>
+    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+  </SvgIcon>
+);
 
 interface ZoomState {
   scale: number;
@@ -638,9 +688,9 @@ function ZoomControls({ targetRef, containerRef, slideKey }: {
   const disabled = state.scale <= ZOOM_MIN && state.tx === 0 && state.ty === 0;
   return (
     <div class="zoom-controls" style={{ opacity: state.scale > 1 ? 1 : 0.5 }}>
-      <button class="zoom-btn" title="Zoom in" onClick={onZoomIn} dangerouslySetInnerHTML={{ __html: ICON_ZOOM_IN }} />
-      <button class="zoom-btn" title="Zoom out" onClick={onZoomOut} disabled={state.scale <= ZOOM_MIN} dangerouslySetInnerHTML={{ __html: ICON_ZOOM_OUT }} />
-      <button class="zoom-btn" title="Reset zoom" onClick={onReset} disabled={disabled} dangerouslySetInnerHTML={{ __html: ICON_RESET }} />
+      <button class="zoom-btn" title="Zoom in" onClick={onZoomIn}><IconZoomIn /></button>
+      <button class="zoom-btn" title="Zoom out" onClick={onZoomOut} disabled={state.scale <= ZOOM_MIN}><IconZoomOut /></button>
+      <button class="zoom-btn" title="Reset zoom" onClick={onReset} disabled={disabled}><IconReset /></button>
     </div>
   );
 }
