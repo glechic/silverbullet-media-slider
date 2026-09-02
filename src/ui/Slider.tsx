@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import type { ComponentChild } from "preact";
 import type { SlideDescriptor, SliderOptions } from "./index.tsx";
+import cx from "./classnames.ts";
 
 const TRANSITIONS = [
   "fade", "slide", "zoom", "slide-up", "slide-down",
@@ -323,17 +324,16 @@ export function Slider({ slides, options, root }: Props) {
 
   const s = slides[displayedIdx];
 
-  const thumbVClass = verticalThumbs ? " vertical-thumb" : "";
   const setThumbRef = (i: number) => (el: Element | null) => {
     if (el) thumbElsRef.current[i] = el as any;
   };
 
-  const sectionClass = `ms-thumbnail-section ${verticalThumbs ? "ms-vertical" : "ms-horizontal"}`;
+  const sectionClass = cx("ms-thumbnail-section", verticalThumbs ? "ms-vertical" : "ms-horizontal");
   const thumbSection = options.carouselShowThumbnails && (
     <div class={sectionClass}>
       {options.showThumbnailToggle && (
         <button
-          class={`ms-thumbnail-toggle-btn${verticalThumbs ? " ms-vertical" : ""}`}
+          class={cx("ms-thumbnail-toggle-btn", { "ms-vertical": verticalThumbs })}
           title="Toggle thumbnails"
           onClick={toggleThumbs}
           dangerouslySetInnerHTML={{
@@ -345,13 +345,13 @@ export function Slider({ slides, options, root }: Props) {
       )}
       <div
         ref={thumbContainerRef as any}
-        class={`thumbnail-container ${verticalThumbs ? "vertical" : "horizontal"}${thumbsCollapsed ? " ms-collapsed" : ""}`}
+        class={cx("thumbnail-container", verticalThumbs ? "vertical" : "horizontal", { "ms-collapsed": thumbsCollapsed })}
       >
         {slides.map((slide, i) => {
           const isImg = slide.kind === "image" || slide.kind === "youtube";
           return isImg ? (
             <img
-              class={`thumbnail${thumbVClass}`}
+              class={cx("thumbnail", { "vertical-thumb": verticalThumbs })}
               data-src={slide.thumb || slide.src}
               loading="lazy"
               ref={setThumbRef(i)}
@@ -359,7 +359,7 @@ export function Slider({ slides, options, root }: Props) {
             />
           ) : (
             <div
-              class={`thumbnail-placeholder${thumbVClass}`}
+              class={cx("thumbnail-placeholder", { "vertical-thumb": verticalThumbs })}
               ref={setThumbRef(i)}
               onClick={() => setIdx(i)}
             >
@@ -386,7 +386,7 @@ export function Slider({ slides, options, root }: Props) {
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        <div ref={sliderContainerRef} class={`slider-container${isFullscreen ? " fullscreen-slider" : ""}`}>
+        <div ref={sliderContainerRef} class={cx("slider-container", { "fullscreen-slider": isFullscreen })}>
           <div ref={mediaWrapRef} class="media-wrapper">
             <div key={displayedIdx} class="media-inner">
               {mediaContent}
