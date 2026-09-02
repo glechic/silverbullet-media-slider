@@ -7,9 +7,9 @@ import { Slider } from "./Slider";
 declare const __SLIDES: SlideDescriptor[];
 declare const __OPTIONS: SliderOptions;
 
-const root = document.querySelector(".media-slider-wrapper") as HTMLElement | null;
+const root = document.getElementById(__OPTIONS.sliderId || "") as HTMLElement | null;
 if (!root) {
-  console.error("[media-slider] wrapper element not found");
+  console.error("[media-slider] root element not found");
 } else {
   try {
     console.log("[media-slider] booting", __SLIDES.length, "slides");

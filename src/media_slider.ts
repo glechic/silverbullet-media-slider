@@ -410,7 +410,7 @@ async function renderSlider(
   const htmlParts: string[] = [];
   htmlParts.push(`<style>${css}</style>`);
   htmlParts.push(
-    `<div class="media-slider-wrapper" id="${id}"></div>`,
+    `<div id="${id}"></div>`,
   );
   const html = htmlParts.join("\n");
 

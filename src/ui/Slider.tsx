@@ -64,21 +64,22 @@ export function Slider({ slides, options, root }: Props) {
   const savedFsState = useRef({ iframe: "", body: "", html: "" });
   const mediaImgRef = useRef<HTMLImageElement>(null);
   const sliderContainerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const zoom = useZoomPan(mediaImgRef, displayedIdx);
 
-  // CSS vars on the wrapper.
-  useEffect(() => {
-    root.style.setProperty("--slider-width", options.width);
-    root.style.setProperty("--slider-height", options.height);
-    root.style.setProperty("--transition-duration", dur + "ms");
-    root.classList.add(verticalThumbs ? "flex-row" : "flex-column");
-  }, [options.width, options.height, dur, verticalThumbs]);
+  const wrapperStyle = {
+    "--slider-width": options.width,
+    "--slider-height": options.height,
+    "--transition-duration": dur + "ms",
+  } as preact.JSX.CSSProperties;
+  const wrapperClass = cx("media-slider-wrapper", verticalThumbs ? "flex-row" : "flex-column");
 
   const requestHeight = useCallback(() => {
     if (!globalThis.parent) return;
+    const el = wrapperRef.current ?? root;
     const h = Math.max(
-      root.scrollHeight,
-      root.offsetHeight,
+      el.scrollHeight,
+      el.offsetHeight,
       document.body.scrollHeight,
       document.body.offsetHeight,
     ) + 18;
@@ -268,7 +269,7 @@ export function Slider({ slides, options, root }: Props) {
   // Fullscreen.
   const enterFs = useCallback(() => {
     setIsFullscreen(true);
-    root.classList.add("ms-fullscreen");
+    (wrapperRef.current ?? root).classList.add("ms-fullscreen");
     if (globalThis.frameElement) {
       savedFsState.current.iframe = globalThis.frameElement.getAttribute("style") || "";
       globalThis.frameElement.style.cssText =
@@ -282,7 +283,7 @@ export function Slider({ slides, options, root }: Props) {
 
   const exitFs = useCallback(() => {
     setIsFullscreen(false);
-    root.classList.remove("ms-fullscreen");
+    (wrapperRef.current ?? root).classList.remove("ms-fullscreen");
     if (globalThis.frameElement) {
       globalThis.frameElement.setAttribute("style", savedFsState.current.iframe);
     }
@@ -398,7 +399,7 @@ export function Slider({ slides, options, root }: Props) {
   const thumbsFirst = options.thumbnailPosition === "top" || options.thumbnailPosition === "left";
 
   return (
-    <>
+    <div ref={wrapperRef} class={wrapperClass} style={wrapperStyle}>
       {thumbsFirst && thumbSection}
       <div
         class="slider-content"
@@ -472,7 +473,7 @@ export function Slider({ slides, options, root }: Props) {
           </button>
         </>
       )}
-    </>
+    </div>
   );
 }
 
