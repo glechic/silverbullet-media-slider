@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import type { ComponentChild } from "preact";
 import type { SlideDescriptor, SliderOptions } from "./index";
 import cx from "./classnames";
+import { useFullscreen } from "./useFullscreen";
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -49,7 +50,6 @@ export function Slider({ slides, options, root }: Props) {
 
   const [idx, setIdx] = useState(0);
   const directionRef = useRef<"next" | "prev">("next");
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [thumbsCollapsed, setThumbsCollapsed] = useState(
     options.thumbnailsCollapsedByDefault,
   );
@@ -61,10 +61,10 @@ export function Slider({ slides, options, root }: Props) {
   const mediaWrapRef = useRef<HTMLDivElement>(null);
   const thumbContainerRef = useRef<HTMLDivElement>(null);
   const thumbElsRef = useRef<HTMLElement[]>([]);
-  const savedFsState = useRef({ iframe: "", body: "", html: "" });
   const mediaImgRef = useRef<HTMLImageElement>(null);
   const sliderContainerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, toggle: toggleFullscreen } = useFullscreen(root);
   const zoom = useZoomPan(mediaImgRef, displayedIdx);
 
   const wrapperStyle = {
@@ -76,7 +76,8 @@ export function Slider({ slides, options, root }: Props) {
 
   const requestHeight = useCallback(() => {
     if (!globalThis.parent) return;
-    const el = wrapperRef.current ?? root;
+    const el = wrapperRef.current;
+    if (!el) return;
     const h = Math.max(
       el.scrollHeight,
       el.offsetHeight,
@@ -84,7 +85,7 @@ export function Slider({ slides, options, root }: Props) {
       document.body.offsetHeight,
     ) + 18;
     globalThis.parent.postMessage({ type: "setHeight", height: h }, "*");
-  }, [root]);
+  }, []);
 
   const goPrev = useCallback(() => {
     directionRef.current = "prev";
@@ -265,55 +266,6 @@ export function Slider({ slides, options, root }: Props) {
     rafId = requestAnimationFrame(onFrame);
     return () => cancelAnimationFrame(rafId);
   }, [thumbsCollapsed, requestHeight]);
-
-  // Fullscreen.
-  const enterFs = useCallback(() => {
-    setIsFullscreen(true);
-    (wrapperRef.current ?? root).classList.add("ms-fullscreen");
-    if (globalThis.frameElement) {
-      savedFsState.current.iframe = globalThis.frameElement.getAttribute("style") || "";
-      globalThis.frameElement.style.cssText =
-        "width:100%!important;height:100%!important;border:0;position:fixed;inset:0;";
-    }
-    savedFsState.current.body = document.body.getAttribute("style") || "";
-    savedFsState.current.html = document.documentElement.getAttribute("style") || "";
-    document.body.style.cssText += "margin:0;height:100%;overflow:hidden;";
-    document.documentElement.style.cssText += "margin:0;height:100%;overflow:hidden;";
-  }, [root]);
-
-  const exitFs = useCallback(() => {
-    setIsFullscreen(false);
-    (wrapperRef.current ?? root).classList.remove("ms-fullscreen");
-    if (globalThis.frameElement) {
-      globalThis.frameElement.setAttribute("style", savedFsState.current.iframe);
-    }
-    document.body.setAttribute("style", savedFsState.current.body);
-    document.documentElement.setAttribute("style", savedFsState.current.html);
-  }, [root]);
-
-  useEffect(() => {
-    try {
-      globalThis.parent.document.addEventListener("fullscreenchange", () => {
-        if (globalThis.parent.document.fullscreenElement) enterFs();
-        else exitFs();
-      });
-    } catch { /* ignore */ }
-  }, [enterFs, exitFs]);
-
-  const toggleFullscreen = useCallback(() => {
-    if (!isFullscreen) {
-      const target = globalThis.frameElement || root;
-      target.requestFullscreen?.().catch((err: Error) =>
-        console.error("Error enabling fullscreen:", err),
-      );
-      if (!globalThis.frameElement) enterFs();
-    } else {
-      (document.exitFullscreen || globalThis.parent?.document?.exitFullscreen)?.call(
-        globalThis.parent?.document || document,
-      );
-      if (!globalThis.frameElement) exitFs();
-    }
-  }, [isFullscreen, root, enterFs, exitFs]);
 
   const copyLink = useCallback(async () => {
     const s = slides[displayedIdx];
