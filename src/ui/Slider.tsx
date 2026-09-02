@@ -294,7 +294,11 @@ export function Slider({ slides, options, root }: Props) {
     if (el) thumbElsRef.current[i] = el as any;
   };
 
-  const sectionClass = cx("ms-thumbnail-section", verticalThumbs ? "ms-vertical" : "ms-horizontal");
+  const sectionClass = cx(
+    "ms-thumbnail-section",
+    verticalThumbs ? "ms-vertical" : "ms-horizontal",
+    { "ms-collapsed": thumbsCollapsed },
+  );
   const thumbSection = options.carouselShowThumbnails && (
     <div class={sectionClass}>
       {options.showThumbnailToggle && (

@@ -40,6 +40,50 @@ body {
   background: rgba(255, 80, 80, 0.12);
 }
 
+// --- Fullscreen (host element gets .ms-fullscreen) ---
+.ms-fullscreen {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  border-radius: 0;
+  margin: 0;
+
+  .media-slider-wrapper {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+  }
+
+  .slider-content {
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .slider-container {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    max-height: 100vh;
+  }
+
+  .media-wrapper {
+    height: 100%;
+    width: 100%;
+  }
+
+  img.slider-media,
+  video.slider-media,
+  iframe.slider-media {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+}
+
 // --- Wrapper ---
 .media-slider-wrapper {
   position: relative;
@@ -59,44 +103,6 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-  }
-
-  // Fullscreen (host iframe is fullscreened via frameElement)
-  &.ms-fullscreen {
-    width: 100%;
-    height: 100%;
-    background: #000;
-    border-radius: 0;
-    margin: 0;
-
-    .slider-content {
-      width: 100%;
-      height: 100%;
-      flex: 1;
-      min-height: 0;
-    }
-
-    .slider-container {
-      width: 100%;
-      height: 100%;
-      flex: 1;
-      min-height: 0;
-    }
-
-    .media-wrapper {
-      height: 100%;
-      width: 100%;
-    }
-
-    img.slider-media,
-    video.slider-media,
-    iframe.slider-media {
-      width: 100%;
-      height: 100%;
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-    }
   }
 
   // Thumbnail collapse toggle button
@@ -161,6 +167,12 @@ body {
     transition: max-height 0.3s ease, opacity 0.2s ease;
   }
 
+  // When collapsed, shrink the section to just the toggle button.
+  .ms-thumbnail-section.ms-horizontal.ms-collapsed {
+    height: 18px;
+    overflow: visible;
+  }
+
   // Collapsed state for vertical thumbnails
   .thumbnail-container.vertical.ms-collapsed {
     max-width: 0;
@@ -175,6 +187,11 @@ body {
     max-width: 120px;
     opacity: 1;
     transition: max-width 0.3s ease, opacity 0.2s ease;
+  }
+
+  .ms-thumbnail-section.ms-vertical.ms-collapsed {
+    width: 18px;
+    overflow: visible;
   }
 }
 
@@ -207,7 +224,10 @@ body {
 }
 
 .fullscreen-slider {
-  height: 85vh;
+  height: 100%;
+  max-height: 100vh;
+  flex: 1;
+  min-height: 0;
 }
 
 // --- Media wrapper ---
@@ -252,8 +272,10 @@ body {
 }
 
 img.slider-media {
-  width: 100%;
-  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
 }
 
