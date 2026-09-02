@@ -628,7 +628,9 @@ function ZoomControls({ targetRef, containerRef, slideKey }: {
     const container = containerRef.current;
     if (!img || !container) return;
 
-    const onDblClick = (e: MouseEvent) => {
+    const onClick = (e: MouseEvent) => {
+      // Ignore clicks that end a drag.
+      if (dragRef.current) return;
       e.preventDefault();
       e.stopPropagation();
       setState((prev) => {
@@ -637,10 +639,11 @@ function ZoomControls({ targetRef, containerRef, slideKey }: {
         const cx = (e.clientX - rect.left) / rect.width;
         const cy = (e.clientY - rect.top) / rect.height;
         const scale = 1.25;
+        // transform-origin is center, so offset from the image center.
         return {
           scale,
-          tx: -(cx * rect.width * (scale - 1)),
-          ty: -(cy * rect.height * (scale - 1)),
+          tx: -(cx - 0.5) * rect.width * (scale - 1),
+          ty: -(cy - 0.5) * rect.height * (scale - 1),
         };
       });
     };
@@ -671,13 +674,13 @@ function ZoomControls({ targetRef, containerRef, slideKey }: {
       e.preventDefault();
     };
 
-    img.addEventListener("dblclick", onDblClick);
+    img.addEventListener("click", onClick);
     container.addEventListener("wheel", onWheel, { passive: false });
     img.addEventListener("mousedown", onMouseDown);
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
     return () => {
-      img.removeEventListener("dblclick", onDblClick);
+      img.removeEventListener("click", onClick);
       container.removeEventListener("wheel", onWheel);
       img.removeEventListener("mousedown", onMouseDown);
       document.removeEventListener("mousemove", onMouseMove);
