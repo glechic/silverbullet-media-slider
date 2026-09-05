@@ -68,10 +68,6 @@ recursive: true
 ```
 ````
 
-> **Note:** Folder expansion uses `space.listFiles()` to enumerate files. Files
-> under `_/` (system prefix) may not appear if they aren't indexed by
-> SilverBullet. If files aren't found, try moving them to a non-`_/` path.
-
 ### Markdown slides
 
 A `.md` page referenced in the slider is rendered inline as a slide (read-only).
@@ -101,7 +97,15 @@ A `.md` page referenced in the slider is rendered inline as a slide (read-only).
 
 ## Install
 
-Use the `Library: Install` command in SilverBullet with this URL:
+Open your `PLUGS` note in SilverBullet and add:
+
+```yaml
+- github:glechic/silverbullet-media-slider/build/media-slider.plug.js
+```
+
+Then run the `Plugs: Update` command.
+
+Alternatively, use the `Library: Install` command with the URL to this repo's `PLUG.md`:
 
 ```
 https://github.com/glechic/silverbullet-media-slider/blob/main/PLUG.md
