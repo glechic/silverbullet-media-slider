@@ -1,5 +1,7 @@
 # silverbullet-media-slider
 
+![Screenshot](assets/screenshot.webp)
+
 A [SilverBullet](https://silverbullet.md) plug that renders an interactive media
 slider / carousel inside fenced `media-slider` code blocks. Inspired by the
 Obsidian [Media Slider](https://github.com/amatya-aditya/obsidian-media-slider)
