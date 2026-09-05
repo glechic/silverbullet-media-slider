@@ -13,6 +13,7 @@
     "@silverbulletmd/silverbullet": ">=2.5.3"
   },
   "devDependencies": {
+    "preact": "^10.29.8",
     "typescript": "^5.9.0"
   }
 }

@@ -11,7 +11,7 @@
  *
  * Inspired by the Obsidian "Media Slider" plugin by amatya-aditya.
  */
-import { asset, editor, space } from "@silverbulletmd/silverbullet/syscalls";
+import { asset, editor, space, syscall } from "@silverbulletmd/silverbullet/syscalls";
 import type { FileMeta } from "@silverbulletmd/silverbullet/type/index";
 
 /** A single media entry to display in the slider. */
@@ -95,7 +95,7 @@ export async function mediaSliderWidget(
   _pageName: string,
 ): Promise<{ html: string; script: string } | null> {
   try {
-    const { options, mediaLines } = parseFrontmatter(body);
+    const { options, mediaLines } = await parseFrontmatter(body);
     const entries = await collectEntries(mediaLines, options);
     if (entries.length === 0) {
       return {
@@ -127,17 +127,17 @@ export async function mediaSliderHelp(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /** Split a codeblock body into YAML frontmatter (optional) and media lines. */
-function parseFrontmatter(body: string): {
+async function parseFrontmatter(body: string): Promise<{
   options: SliderOptions;
   mediaLines: string[];
-} {
+}> {
   const fmMatch = body.match(/^---\r?\n([\s\S]+?)\r?\n---\r?\n?/);
   let options: SliderOptions = { ...DEFAULT_OPTIONS };
   let rest = body;
   if (fmMatch) {
     rest = body.slice(fmMatch[0].length);
     try {
-      const parsed = parseSimpleYaml(fmMatch[1]);
+      const parsed = await syscall("yaml.parse", fmMatch[1]);
       options = mergeOptions(options, parsed);
     } catch {
       // ignore malformed frontmatter; fall back to defaults
@@ -148,62 +148,6 @@ function parseFrontmatter(body: string): {
     .map((l) => l.trim())
     .filter((l) => l.length > 0 && !l.startsWith("#"));
   return { options, mediaLines };
-}
-
-/** A tiny, dependency-free YAML subset parser (keys, lists, scalars, nesting-by-indent). */
-function parseSimpleYaml(src: string): any {
-  const lines = src.split(/\r?\n/).filter((l) => l.trim() && !l.trim().startsWith("#"));
-  const root: any = {};
-  const stack: { indent: number; obj: any }[] = [{ indent: -1, obj: root }];
-  for (const raw of lines) {
-    const indent = raw.length - raw.trimStart().length;
-    const trimmed = raw.trim();
-    let cur = stack[stack.length - 1];
-    while (cur && cur.indent >= indent) stack.pop();
-    cur = stack[stack.length - 1] ?? { indent: -1, obj: root };
-    const target = cur.obj;
-    const listMatch = trimmed.match(/^-\s+(.*)$/);
-    if (listMatch) {
-      if (!Array.isArray(target.__list)) target.__list = [];
-      target.__list.push(scalar(listMatch[1]));
-      continue;
-    }
-    const kvMatch = trimmed.match(/^([A-Za-z0-9_]+)\s*:\s*(.*)$/);
-    if (kvMatch) {
-      const key = kvMatch[1];
-      const valRaw = kvMatch[2];
-      if (valRaw === "") {
-        const child: any = {};
-        target[key] = child;
-        stack.push({ indent, obj: child });
-      } else {
-        target[key] = scalar(valRaw);
-      }
-    }
-  }
-  // Promote `__list` arrays into their parent keys.
-  return promoteLists(root);
-}
-
-function promoteLists(obj: any): any {
-  if (obj === null || typeof obj !== "object") return obj;
-  if (Array.isArray(obj)) return obj.map(promoteLists);
-  const out: any = {};
-  for (const [k, v] of Object.entries(obj)) {
-    out[k] = (v as any)?.__list && Object.keys(v as any).length === 1
-      ? (v as any).__list.map(promoteLists)
-      : promoteLists(v);
-  }
-  return out;
-}
-
-function scalar(s: string): any {
-  s = s.trim().replace(/^['"]|['"]$/g, "");
-  if (s === "true") return true;
-  if (s === "false") return false;
-  if (s === "null" || s === "~") return null;
-  if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
-  return s;
 }
 
 function mergeOptions(base: SliderOptions, parsed: any): SliderOptions {
@@ -344,22 +288,6 @@ async function detectKind(src: string): Promise<MediaKind> {
   if (AUDIO_EXT.includes(ext)) return "audio";
   if (PDF_EXT.includes(ext)) return "pdf";
   if (MD_EXT.includes(ext)) return "markdown";
-  if (/^https?:\/\//i.test(src)) {
-    // Unknown remote: best-effort via Content-Type.
-    try {
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(src, { method: "HEAD", signal: controller.signal });
-      clearTimeout(t);
-      const ct = res.headers.get("Content-Type") ?? "";
-      if (ct.startsWith("image/")) return "image";
-      if (ct.startsWith("video/")) return "video";
-      if (ct.startsWith("audio/")) return "audio";
-      if (ct === "application/pdf") return "pdf";
-    } catch {
-      // fall through
-    }
-  }
   return "unknown";
 }
 
@@ -464,6 +392,7 @@ function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }

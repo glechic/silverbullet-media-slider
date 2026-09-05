@@ -2,7 +2,7 @@
 name: Library/glechic/media-slider/PLUG
 tags: meta/library
 files:
-- media-slider.plug.js
+- build/media-slider.plug.js
 ---
 A SilverBullet plug that renders a media slider/carousel inside fenced `media-slider`
 code blocks, inspired by the Obsidian "Media Slider" plugin.
