@@ -11,7 +11,7 @@
  *
  * Inspired by the Obsidian "Media Slider" plugin by amatya-aditya.
  */
-import { asset, editor, space, syscall } from "@silverbulletmd/silverbullet/syscalls";
+import { asset, editor, space } from "@silverbulletmd/silverbullet/syscalls";
 import type { FileMeta } from "@silverbulletmd/silverbullet/type/index";
 
 /** A single media entry to display in the slider. */
@@ -137,7 +137,7 @@ async function parseFrontmatter(body: string): Promise<{
   if (fmMatch) {
     rest = body.slice(fmMatch[0].length);
     try {
-      const parsed = await syscall("yaml.parse", fmMatch[1]);
+      const parsed = await (globalThis as any).syscall("yaml.parse", fmMatch[1]);
       options = mergeOptions(options, parsed);
     } catch {
       // ignore malformed frontmatter; fall back to defaults
@@ -226,7 +226,8 @@ async function listFolderMedia(
   let files: FileMeta[] = [];
   try {
     files = await space.listFiles();
-  } catch {
+  } catch (e) {
+    console.error("[media-slider] space.listFiles failed:", e);
     return [];
   }
   const prefix = folderPath.endsWith("/") ? folderPath : folderPath + "/";
@@ -238,12 +239,11 @@ async function listFolderMedia(
   );
   const result: string[] = [];
   for (const f of files) {
-    if (f.name === prefix.slice(0, -1)) continue;
-    if (!f.path.startsWith(prefix)) continue;
-    if (!options.recursive && f.path.slice(prefix.length).includes("/")) continue;
+    if (!f.name.startsWith(prefix)) continue;
+    if (!options.recursive && f.name.slice(prefix.length).includes("/")) continue;
     const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
     if (!allowed.has(ext)) continue;
-    result.push(f.path);
+    result.push(f.name);
   }
   result.sort();
   return result;
