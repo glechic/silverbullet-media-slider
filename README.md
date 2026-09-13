@@ -85,6 +85,12 @@ Open your `PLUGS` note in SilverBullet and add:
 
 Then run the `Plugs: Update` command.
 
+Or pin to the latest release:
+
+```yaml
+- ghr:glechic/silverbullet-media-slider
+```
+
 Alternatively, use the `Library: Install` command with the URL to this repo's `PLUG.md`:
 
 ```
