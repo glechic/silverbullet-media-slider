@@ -279,9 +279,9 @@ img.slider-media {
   object-fit: contain;
 }
 
-.slider-media iframe {
-  width: 100% !important;
-  height: 100% !important;
+iframe.slider-media {
+  width: 100%;
+  height: 100%;
   aspect-ratio: 16 / 9;
   border: none;
   background: #000;
@@ -557,7 +557,10 @@ $effects: fade, zoom, slide-up, slide-down, flip, flip-vertical, rotate, blur,
   transition: opacity $transition-dur $transition-ease;
 }
 
-// Slide (horizontal, direction-aware)
+// Slide (horizontal, direction-aware).
+// Out: old content exits toward the navigation direction.
+// In: new content enters from the opposite side (instant jump + animated
+// slide to center, via keyframes so the start position isn't the out state).
 .transition-slide-next-out {
   transform: translateX(-100%);
   transition: transform $transition-dur $transition-ease;
@@ -566,10 +569,20 @@ $effects: fade, zoom, slide-up, slide-down, flip, flip-vertical, rotate, blur,
   transform: translateX(100%);
   transition: transform $transition-dur $transition-ease;
 }
-.transition-slide-next-in,
+.transition-slide-next-in {
+  animation: ms-slide-in-from-right $transition-dur $transition-ease;
+}
 .transition-slide-prev-in {
-  transform: translateX(0);
-  transition: transform $transition-dur $transition-ease;
+  animation: ms-slide-in-from-left $transition-dur $transition-ease;
+}
+
+@keyframes ms-slide-in-from-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes ms-slide-in-from-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
 }
 
 // Zoom
