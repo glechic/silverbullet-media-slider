@@ -621,24 +621,33 @@ $effects: fade, zoom, slide-up, slide-down, flip, flip-vertical, rotate, blur,
   to { transform: translateY(0); }
 }
 
-// Flip
+// Flip — the new slide starts at -90deg and rotates to 0, continuing the
+// same rotational direction as the old slide's exit (instead of reversing).
 .transition-flip-out {
   transform: perspective(400px) rotateY(90deg);
   opacity: 0;
+  transition: transform $transition-dur $transition-ease, opacity $transition-dur $transition-ease;
 }
 .transition-flip-in {
-  transform: perspective(400px) rotateY(0);
-  opacity: 1;
+  animation: ms-flip-in $transition-dur $transition-ease;
+}
+@keyframes ms-flip-in {
+  from { transform: perspective(400px) rotateY(-90deg); opacity: 0; }
+  to { transform: perspective(400px) rotateY(0); opacity: 1; }
 }
 
 // Flip vertical
 .transition-flip-vertical-out {
   transform: perspective(400px) rotateX(90deg);
   opacity: 0;
+  transition: transform $transition-dur $transition-ease, opacity $transition-dur $transition-ease;
 }
 .transition-flip-vertical-in {
-  transform: perspective(400px) rotateX(0);
-  opacity: 1;
+  animation: ms-flip-vertical-in $transition-dur $transition-ease;
+}
+@keyframes ms-flip-vertical-in {
+  from { transform: perspective(400px) rotateX(-90deg); }
+  to { transform: perspective(400px) rotateX(0); }
 }
 
 // Rotate
