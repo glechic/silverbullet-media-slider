@@ -30,8 +30,8 @@ const ALL_TRANSITION_CLASSES = TRANSITIONS.flatMap((n) => [
 ]);
 
 const KIND_LABELS: Record<string, string> = {
-  image: "IMG", video: "VID", audio: "AUD", pdf: "PDF",
-  markdown: "MD", youtube: "YT", unknown: "FILE",
+  image: "IMG", video: "VID", audio: "AUD",
+  youtube: "YT", unknown: "FILE",
 };
 
 interface Props {
@@ -53,7 +53,6 @@ export function Slider({ slides, options, root }: Props) {
   const [thumbsCollapsed, setThumbsCollapsed] = useState(
     options.thumbnailsCollapsedByDefault,
   );
-  const [mdHtml, setMdHtml] = useState<string>("");
   const [displayedIdx, setDisplayedIdx] = useState(0);
   const isFirstRender = useRef(true);
   const isFirstDisplay = useRef(true);
@@ -156,27 +155,6 @@ export function Slider({ slides, options, root }: Props) {
       }
     }
   }, [idx, options.carouselShowThumbnails, verticalThumbs]);
-
-  // Load markdown content when the displayed slide is markdown.
-  useEffect(() => {
-    const s = slides[displayedIdx];
-    if (s.kind !== "markdown") {
-      setMdHtml("");
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const text = await globalThis.syscall("space.readPage", s.rawPath);
-        const html = await globalThis.syscall("markdown.markdownToHtml", text);
-        if (!cancelled) setMdHtml(html || "");
-      } catch (e) {
-        if (!cancelled)
-          setMdHtml(`<p>Failed to load ${s.rawPath || s.src}: ${e}</p>`);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [displayedIdx, slides]);
 
   // Transition: mirror the old runtime's synchronous sequence exactly.
   // On idx change: (1) apply out-class to media wrapper, (2) after dur ms
@@ -340,7 +318,7 @@ export function Slider({ slides, options, root }: Props) {
     </div>
   );
 
-  const mediaContent = renderMedia(s, mdHtml, options, mediaImgRef, zoom.handlers);
+  const mediaContent = renderMedia(s, options, mediaImgRef, zoom.handlers);
   const isZoomable = s.kind === "image";
 
   const onZoomInBtn = useCallback(() => {
@@ -435,7 +413,6 @@ export function Slider({ slides, options, root }: Props) {
 
 function renderMedia(
   s: SlideDescriptor,
-  mdHtml: string,
   opts: SliderOptions,
   imgRef: preact.RefObject<HTMLImageElement>,
   handlers?: ZoomHandlers,
@@ -459,19 +436,6 @@ function renderMedia(
       );
     case "audio":
       return <audio class="slider-media audio-media" src={s.src} controls />;
-    case "pdf":
-      return (
-        <div class="pdf-container">
-          <iframe class="slider-media pdf-media" src={s.src} />
-        </div>
-      );
-    case "markdown":
-      return (
-        <div
-          class="markdown-content"
-          dangerouslySetInnerHTML={{ __html: mdHtml || "Loading…" }}
-        />
-      );
     case "youtube":
       return (
         <iframe

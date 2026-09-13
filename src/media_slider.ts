@@ -4,10 +4,9 @@
  * Renders a fenced `media-slider` code block as an interactive media carousel
  * inside a sandboxed iframe (codeWidget with renderMode: iframe).
  *
- * Supported media: images, video, audio, PDF, markdown-file slides, and
- * arbitrary remote URLs. Supports thumbnails, captions, transition effects,
- * autoplay/slideshow, keyboard / wheel / touch navigation, and folder
- * expansion.
+ * Supported media: images, video, audio, YouTube, and arbitrary remote URLs.
+ * Supports thumbnails, captions, transition effects, autoplay/slideshow,
+ * keyboard / wheel / touch navigation, and folder expansion.
  *
  * Inspired by the Obsidian "Media Slider" plugin by amatya-aditya.
  */
@@ -32,8 +31,6 @@ type MediaKind =
   | "image"
   | "video"
   | "audio"
-  | "pdf"
-  | "markdown"
   | "youtube"
   | "unknown";
 
@@ -77,14 +74,10 @@ const DEFAULT_OPTIONS: SliderOptions = {
 const IMAGE_EXT = ["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "avif"];
 const VIDEO_EXT = ["mp4", "webm", "mkv", "mov", "ogv"];
 const AUDIO_EXT = ["mp3", "ogg", "wav", "flac", "m4a"];
-const PDF_EXT = ["pdf"];
-const MD_EXT = ["md"];
 const DEFAULT_FOLDER_FILTER = [
   ...IMAGE_EXT,
   ...VIDEO_EXT,
   ...AUDIO_EXT,
-  ...PDF_EXT,
-  ...MD_EXT,
 ];
 
 let sliderCounter = 0;
@@ -212,7 +205,7 @@ async function collectEntries(
   for (const line of expanded) {
     const parsed = parseMediaLine(line);
     if (parsed) {
-      entries.push({ ...parsed, kind: await detectKind(parsed.src) });
+      entries.push({ ...parsed, kind: detectKind(parsed.src) });
     }
   }
   return entries;
@@ -280,14 +273,12 @@ function makeEntry(src: string, caption: string | null): Omit<MediaEntry, "kind"
 }
 
 /** Detect the media kind from a path/URL extension or YouTube host. */
-async function detectKind(src: string): Promise<MediaKind> {
+function detectKind(src: string): MediaKind {
   if (isYouTubeUrl(src)) return "youtube";
   const ext = src.split("?")[0].split(".").pop()?.toLowerCase() ?? "";
   if (IMAGE_EXT.includes(ext)) return "image";
   if (VIDEO_EXT.includes(ext)) return "video";
   if (AUDIO_EXT.includes(ext)) return "audio";
-  if (PDF_EXT.includes(ext)) return "pdf";
-  if (MD_EXT.includes(ext)) return "markdown";
   return "unknown";
 }
 

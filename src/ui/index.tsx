@@ -24,7 +24,7 @@ if (!root) {
 }
 
 export interface SlideDescriptor {
-  kind: "image" | "video" | "audio" | "pdf" | "markdown" | "youtube" | "unknown";
+  kind: "image" | "video" | "audio" | "youtube" | "unknown";
   src: string;
   rawPath?: string;
   caption: string | null;
