@@ -9,14 +9,14 @@ plugin.
 
 ## Features
 
-- **Mixed media** — images, video, audio, PDF, YouTube embeds, and markdown-file slides
+- **Mixed media** — images, video, audio, and YouTube embeds; other files open as links
 - **Thumbnails** — position top / bottom / left / right; collapsible with a toggle button
 - **Captions** — overlay or below the media
 - **Transitions** — fade, slide, zoom, slide-up, slide-down, flip, flip-vertical, rotate, blur, squeeze
 - **Autoplay** — configurable slideshow speed
-- **Navigation** — keyboard (arrow keys), touch swipe, and prev/next buttons
+- **Navigation** — keyboard (arrow keys), touch swipe, and prev/next buttons (hidden for a single slide)
 - **Zoom & pan** — click to zoom, drag to pan, +/-/reset buttons, Ctrl+scroll to zoom (images only)
-- **Fullscreen** — iframe-aware fullscreen that pins the host element
+- **Fullscreen** — iframe-aware fullscreen
 - **Copy link** — copy the markdown wikilink for the current slide
 
 ## Usage
@@ -36,9 +36,10 @@ enhancedView: true
 ![[photo2.png|A calm lake]]
 ![[clip.mp4]]
 ![[song.mp3]]
-![[doc.pdf]]
 ```
 ````
+
+Each line inside the block (after the optional YAML frontmatter) is one slide.
 
 ### Linking media
 
@@ -49,10 +50,9 @@ enhancedView: true
 | `![alt](path/or/url)` | Markdown image syntax |
 | `https://youtube.com/watch?v=...` | YouTube URL → embedded player |
 | `https://example.com/file.mp4` | Remote URL (kind inferred from extension) |
+| `![[file.xyz]]` | Unsupported type → renders as an "Open file" link |
 
-### Markdown slides
-
-A `.md` page referenced in the slider is rendered inline as a slide (read-only).
+Lines starting with `#` and stray `---` separators are ignored.
 
 ## YAML options
 
