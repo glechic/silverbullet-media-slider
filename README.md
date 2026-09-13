@@ -18,7 +18,6 @@ plugin.
 - **Zoom & pan** — click to zoom, drag to pan, +/-/reset buttons, Ctrl+scroll to zoom (images only)
 - **Fullscreen** — iframe-aware fullscreen that pins the host element
 - **Copy link** — copy the markdown wikilink for the current slide
-- **Folder expansion** — include all media from a folder, optionally recursive
 
 ## Usage
 
@@ -51,23 +50,6 @@ enhancedView: true
 | `https://youtube.com/watch?v=...` | YouTube URL → embedded player |
 | `https://example.com/file.mp4` | Remote URL (kind inferred from extension) |
 
-### Folder expansion
-
-Include all media from a folder in one block:
-
-````markdown
-```media-slider
----
-fileTypes:
-  - jpg
-  - png
-  - mp4
-recursive: true
----
-[[folder/subfolder/]]
-```
-````
-
 ### Markdown slides
 
 A `.md` page referenced in the slider is rendered inline as a slide (read-only).
@@ -87,8 +69,6 @@ A `.md` page referenced in the slider is rendered inline as a slide (read-only).
 | `transitionEffect` | string | `fade` | See list below |
 | `transitionDuration` | number | `300` | Transition duration in milliseconds |
 | `enhancedView` | bool | `true` | Show fullscreen + copy buttons; enable zoom/pan |
-| `fileTypes` | list | all media | Extensions to include for folder expansion |
-| `recursive` | bool | `false` | Recurse into subfolders during folder expansion |
 | `showThumbnailToggle` | bool | `true` | Show collapse/expand button on thumbnail strip |
 | `thumbnailsCollapsedByDefault` | bool | `false` | Start with thumbnails collapsed |
 

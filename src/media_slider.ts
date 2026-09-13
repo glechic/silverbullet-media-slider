@@ -5,13 +5,12 @@
  * inside a sandboxed iframe (codeWidget with renderMode: iframe).
  *
  * Supported media: images, video, audio, YouTube, and arbitrary remote URLs.
- * Supports thumbnails, captions, transition effects, autoplay/slideshow,
- * keyboard / wheel / touch navigation, and folder expansion.
+ * Supports thumbnails, captions, transition effects, autoplay/slideshow, and
+ * keyboard / wheel / touch navigation.
  *
  * Inspired by the Obsidian "Media Slider" plugin by amatya-aditya.
  */
-import { asset, editor, space } from "@silverbulletmd/silverbullet/syscalls";
-import type { FileMeta } from "@silverbulletmd/silverbullet/type/index";
+import { asset, editor } from "@silverbulletmd/silverbullet/syscalls";
 
 /** A single media entry to display in the slider. */
 interface MediaEntry {
@@ -47,8 +46,6 @@ interface SliderOptions {
   transitionEffect: string;
   transitionDuration: number;
   enhancedView: boolean;
-  fileTypes: string[] | null;
-  recursive: boolean;
   showThumbnailToggle: boolean;
   thumbnailsCollapsedByDefault: boolean;
 }
@@ -65,8 +62,6 @@ const DEFAULT_OPTIONS: SliderOptions = {
   transitionEffect: "fade",
   transitionDuration: 300,
   enhancedView: true,
-  fileTypes: null,
-  recursive: false,
   showThumbnailToggle: true,
   thumbnailsCollapsedByDefault: false,
 };
@@ -74,11 +69,6 @@ const DEFAULT_OPTIONS: SliderOptions = {
 const IMAGE_EXT = ["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "avif"];
 const VIDEO_EXT = ["mp4", "webm", "mkv", "mov", "ogv"];
 const AUDIO_EXT = ["mp3", "ogg", "wav", "flac", "m4a"];
-const DEFAULT_FOLDER_FILTER = [
-  ...IMAGE_EXT,
-  ...VIDEO_EXT,
-  ...AUDIO_EXT,
-];
 
 let sliderCounter = 0;
 
@@ -89,7 +79,7 @@ export async function mediaSliderWidget(
 ): Promise<{ html: string; script: string } | null> {
   try {
     const { options, mediaLines } = await parseFrontmatter(body);
-    const entries = await collectEntries(mediaLines, options);
+    const entries = collectEntries(mediaLines);
     if (entries.length === 0) {
       return {
         html: `<div class="ms-empty">No valid media files found in this <code>media-slider</code> block.</div>`,
@@ -163,8 +153,6 @@ function mergeOptions(base: SliderOptions, parsed: any): SliderOptions {
       String(out.carouselShowThumbnails).toLowerCase() === "true";
   if (typeof out.enhancedView === "string")
     out.enhancedView = String(out.enhancedView).toLowerCase() === "true";
-  if (typeof out.recursive === "string")
-    out.recursive = String(out.recursive).toLowerCase() === "true";
   if (typeof out.showThumbnailToggle === "string")
     out.showThumbnailToggle =
       String(out.showThumbnailToggle).toLowerCase() === "true";
@@ -184,62 +172,16 @@ function mergeOptions(base: SliderOptions, parsed: any): SliderOptions {
   return out;
 }
 
-/** Parse media lines (and expand folder references) into MediaEntry objects. */
-async function collectEntries(
-  mediaLines: string[],
-  options: SliderOptions,
-): Promise<MediaEntry[]> {
-  const expanded: string[] = [];
-  for (const line of mediaLines) {
-    const folderMatch = line.match(/^\[\[([^]+\/)\]\]$/) || line.match(/^\[\[([^]+)\]\]$/);
-    if (folderMatch && folderMatch[1].endsWith("/")) {
-      const folderPath = folderMatch[1].replace(/\/$/, "");
-      const files = await listFolderMedia(folderPath, options);
-      for (const f of files) expanded.push(`![[${f}]]`);
-      continue;
-    }
-    expanded.push(line);
-  }
-
+/** Parse media lines into MediaEntry objects. */
+function collectEntries(mediaLines: string[]): MediaEntry[] {
   const entries: MediaEntry[] = [];
-  for (const line of expanded) {
+  for (const line of mediaLines) {
     const parsed = parseMediaLine(line);
     if (parsed) {
       entries.push({ ...parsed, kind: detectKind(parsed.src) });
     }
   }
   return entries;
-}
-
-/** Recursively list supported media files under a folder. */
-async function listFolderMedia(
-  folderPath: string,
-  options: SliderOptions,
-): Promise<string[]> {
-  let files: FileMeta[] = [];
-  try {
-    files = await space.listFiles();
-  } catch (e) {
-    console.error("[media-slider] space.listFiles failed:", e);
-    return [];
-  }
-  const prefix = folderPath.endsWith("/") ? folderPath : folderPath + "/";
-  const allowed = new Set(
-    (options.fileTypes && options.fileTypes.length
-      ? options.fileTypes
-      : DEFAULT_FOLDER_FILTER
-    ).map((e) => e.toLowerCase().replace(/^\./, "")),
-  );
-  const result: string[] = [];
-  for (const f of files) {
-    if (!f.name.startsWith(prefix)) continue;
-    if (!options.recursive && f.name.slice(prefix.length).includes("/")) continue;
-    const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
-    if (!allowed.has(ext)) continue;
-    result.push(f.name);
-  }
-  result.sort();
-  return result;
 }
 
 /** Parse a single media line (wikilink / markdown link / bare path or URL). */
