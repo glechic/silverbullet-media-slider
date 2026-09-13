@@ -373,20 +373,24 @@ export function Slider({ slides, options, root }: Props) {
             <div class="slider-caption">{s.caption}</div>
           )}
         </div>
-        <button
-          class="slider-btn prev"
-          title="Previous"
-          onClick={goPrev}
-        >
-          <IconChevronLeft />
-        </button>
-        <button
-          class="slider-btn next"
-          title="Next"
-          onClick={goNext}
-        >
-          <IconChevronRight />
-        </button>
+        {slides.length > 1 && (
+          <>
+            <button
+              class="slider-btn prev"
+              title="Previous"
+              onClick={goPrev}
+            >
+              <IconChevronLeft />
+            </button>
+            <button
+              class="slider-btn next"
+              title="Next"
+              onClick={goNext}
+            >
+              <IconChevronRight />
+            </button>
+          </>
+        )}
       </div>
       {!thumbsFirst && thumbSection}
       {options.enhancedView && (

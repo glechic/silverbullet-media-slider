@@ -114,22 +114,24 @@ async function parseFrontmatter(body: string): Promise<{
   options: SliderOptions;
   mediaLines: string[];
 }> {
-  const fmMatch = body.match(/^---\r?\n([\s\S]+?)\r?\n---\r?\n?/);
+  const fmMatch = body.match(/^---\r?\n(?:([\s\S]*?)\r?\n)?---(\r?\n)?/);
   let options: SliderOptions = { ...DEFAULT_OPTIONS };
   let rest = body;
   if (fmMatch) {
     rest = body.slice(fmMatch[0].length);
-    try {
-      const parsed = await (globalThis as any).syscall("yaml.parse", fmMatch[1]);
-      options = mergeOptions(options, parsed);
-    } catch {
-      // ignore malformed frontmatter; fall back to defaults
+    if (fmMatch[1] && fmMatch[1].trim()) {
+      try {
+        const parsed = await (globalThis as any).syscall("yaml.parse", fmMatch[1]);
+        options = mergeOptions(options, parsed);
+      } catch {
+        // ignore malformed frontmatter; fall back to defaults
+      }
     }
   }
   const mediaLines = rest
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter((l) => l.length > 0 && !l.startsWith("#"));
+    .filter((l) => l.length > 0 && l !== "---" && !l.startsWith("#"));
   return { options, mediaLines };
 }
 
