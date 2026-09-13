@@ -595,18 +595,30 @@ $effects: fade, zoom, slide-up, slide-down, flip, flip-vertical, rotate, blur,
   opacity: 1;
 }
 
-// Slide up / down
+// Slide up / down — old exits toward the named direction, new enters from
+// the opposite side (keyframes so the in-phase start isn't the out state).
 .transition-slide-up-out {
-  transform: translateY(100%);
+  transform: translateY(-100%);
+  transition: transform $transition-dur $transition-ease;
 }
 .transition-slide-up-in {
-  transform: translateY(0);
+  animation: ms-slide-up-in $transition-dur $transition-ease;
 }
 .transition-slide-down-out {
-  transform: translateY(-100%);
+  transform: translateY(100%);
+  transition: transform $transition-dur $transition-ease;
 }
 .transition-slide-down-in {
-  transform: translateY(0);
+  animation: ms-slide-down-in $transition-dur $transition-ease;
+}
+
+@keyframes ms-slide-up-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes ms-slide-down-in {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
 }
 
 // Flip
